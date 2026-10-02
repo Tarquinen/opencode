@@ -30,7 +30,8 @@ import { expandPromptInputPastedText, realignPromptInputMentions } from "../../p
 import { parseSlashHead } from "../../prompt/parse"
 import { stringWidth } from "../../util/string-width"
 import { createStore, produce, unwrap } from "solid-js/store"
-import { emptyPrompt, usePromptHistory, type PromptInfo, type PromptPartRef } from "../../prompt/history"
+import { emptyPrompt, usePromptHistory, type PromptInfo } from "../../prompt/history"
+import { createPromptExtmark, syncPromptParts, type PromptPart } from "../../prompt/extmark"
 import { saveDraft, takeDraft } from "./draft-stash"
 import { Skill } from "@opencode/schema/skill"
 import { computePromptTraits } from "../../prompt/traits"
@@ -59,11 +60,7 @@ import { useInteractivity } from "../../context/interactivity"
 import { abbreviateHome } from "../../runtime"
 import { Slot } from "../../plugin/render"
 import type { SessionInbox } from "@opencode/schema/session-inbox"
-import {
-  deduplicatePromptImages,
-  preserveMentionlessPromptAttachments,
-  promptAttachmentLabel,
-} from "../../prompt/attachment"
+import { deduplicatePromptImages, promptAttachmentLabel } from "../../prompt/attachment"
 import { DialogImagePreview } from "../dialog-image-preview"
 import { useDirectoryRecents } from "../../prompt/directory-recents"
 import { directoryRecentValue } from "../../prompt/directory-completion"
@@ -361,14 +358,12 @@ export function Prompt(props: PromptProps) {
   const [store, setStore] = createStore<{
     prompt: PromptInfo
     mode: "normal" | "shell"
-    extmarkToPart: Map<number, PromptPartRef>
     interrupt: number
     placeholder: number
   }>({
     placeholder: randomIndex(list().length),
     prompt: emptyPrompt(),
     mode: "normal",
-    extmarkToPart: new Map(),
     interrupt: 0,
   })
   let disposed = false
@@ -594,23 +589,23 @@ export function Prompt(props: PromptProps) {
                 const text = `@${skill}`
                 const start = input.cursorOffset
                 input.insertText(text + " ")
-                const extmarkId = input.extmarks.create({
+                const part = {
+                  id: Skill.ID.make(skill),
+                  mention: { start, end: start + promptOffsetWidth(text), text },
+                }
+                createPromptExtmark(input, {
                   start,
                   end: start + promptOffsetWidth(text),
                   virtual: true,
                   styleId: skillStyleId,
                   typeId: promptPartTypeId,
+                  data: { type: "skill", value: part },
                 })
                 setStore(
                   produce((draft) => {
                     draft.prompt.text = input.plainText
                     const skills = (draft.prompt.skills ??= [])
-                    const index = skills.length
-                    skills.push({
-                      id: Skill.ID.make(skill),
-                      mention: { start, end: start + promptOffsetWidth(text), text },
-                    })
-                    draft.extmarkToPart.set(extmarkId, { type: "skill", index })
+                    skills.push(part)
                   }),
                 )
               }}
@@ -706,8 +701,7 @@ export function Prompt(props: PromptProps) {
   function resetComposer() {
     input.extmarks.clear()
     setStore("prompt", emptyPrompt())
-    setStore("extmarkToPart", new Map())
-    input.clear()
+    input.setText("")
   }
 
   // Captured once: the session route is keyed by sessionID, so this Prompt
@@ -762,119 +756,46 @@ export function Prompt(props: PromptProps) {
 
   function restoreExtmarksFromPrompt(prompt: PromptInfo) {
     input.extmarks.clear()
-    setStore("extmarkToPart", new Map())
 
     const parts = [
-      ...(prompt.files ?? []).map((part, index) => ({
+      ...(prompt.files ?? []).map((part) => ({
         mention: part.mention,
-        ref: { type: "file" as const, index },
+        data: { type: "file" as const, value: part },
         styleId: fileStyleId,
       })),
-      ...(prompt.agents ?? []).map((part, index) => ({
+      ...(prompt.agents ?? []).map((part) => ({
         mention: part.mention,
-        ref: { type: "agent" as const, index },
+        data: { type: "agent" as const, value: part },
         styleId: agentStyleId,
       })),
-      ...(prompt.skills ?? []).map((part, index) => ({
+      ...(prompt.skills ?? []).map((part) => ({
         mention: part.mention,
-        ref: { type: "skill" as const, index },
+        data: { type: "skill" as const, value: part },
         styleId: skillStyleId,
       })),
-      ...prompt.pasted.map((part, index) => ({
+      ...prompt.pasted.map((part) => ({
         mention: part.source,
-        ref: { type: "pasted" as const, index },
+        data: { type: "pasted" as const, value: part },
         styleId: pasteStyleId,
       })),
     ]
 
-    parts.forEach(({ mention, ref, styleId }) => {
+    parts.forEach(({ mention, data, styleId }) => {
       if (mention?.text) {
-        const extmarkId = input.extmarks.create({
+        createPromptExtmark(input, {
           start: mention.start,
           end: mention.end,
           virtual: true,
           styleId,
           typeId: promptPartTypeId,
-        })
-        setStore("extmarkToPart", (map: Map<number, PromptPartRef>) => {
-          const newMap = new Map(map)
-          newMap.set(extmarkId, ref)
-          return newMap
+          data,
         })
       }
     })
   }
 
   function syncExtmarksWithPromptParts() {
-    const allExtmarks = input.extmarks.getAllForTypeId(promptPartTypeId)
-    setStore(
-      produce((draft) => {
-        const newMap = new Map<number, PromptPartRef>()
-        const fileExtmarks = new Map<number, NonNullable<PromptInfo["files"]>[number]>()
-        const files: NonNullable<PromptInfo["files"]> = []
-        const agents: NonNullable<PromptInfo["agents"]> = []
-        const skills: NonNullable<PromptInfo["skills"]> = []
-        const pasted: PromptInfo["pasted"] = []
-
-        for (const extmark of allExtmarks) {
-          const ref = draft.extmarkToPart.get(extmark.id)
-          if (!ref) continue
-          if (ref.type === "file") {
-            const part = draft.prompt.files?.[ref.index]
-            if (!part?.mention) continue
-            part.mention.start = extmark.start
-            part.mention.end = extmark.end
-            files.push(part)
-            fileExtmarks.set(extmark.id, part)
-            continue
-          }
-          if (ref.type === "agent") {
-            const part = draft.prompt.agents?.[ref.index]
-            if (!part?.mention) continue
-            part.mention.start = extmark.start
-            part.mention.end = extmark.end
-            const index = agents.length
-            agents.push(part)
-            newMap.set(extmark.id, { type: "agent", index })
-            continue
-          }
-          if (ref.type === "skill") {
-            const part = draft.prompt.skills?.[ref.index]
-            if (!part?.mention) continue
-            part.mention.start = extmark.start
-            part.mention.end = extmark.end
-            const index = skills.length
-            skills.push(part)
-            newMap.set(extmark.id, { type: "skill", index })
-            continue
-          }
-          const part = draft.prompt.pasted[ref.index]
-          if (!part) continue
-          part.source.start = extmark.start
-          part.source.end = extmark.end
-          const index = pasted.length
-          pasted.push(part)
-          newMap.set(extmark.id, { type: "pasted", index })
-        }
-
-        const nextFiles = preserveMentionlessPromptAttachments(draft.prompt.files, files)
-        const fileIndices = new Map(nextFiles.map((file, index) => [file, index]))
-        for (const [extmark, file] of fileExtmarks) {
-          const index = fileIndices.get(file)
-          if (index !== undefined) newMap.set(extmark, { type: "file", index })
-        }
-
-        draft.extmarkToPart = newMap
-        if (
-          nextFiles.length !== draft.prompt.files?.length ||
-          nextFiles.some((file, index) => file !== draft.prompt.files?.[index])
-        )
-          draft.prompt.files = nextFiles
-        draft.prompt.agents = agents
-        draft.prompt.skills = skills
-        draft.prompt.pasted = pasted
-      }),
-    )
+    setStore("prompt", syncPromptParts(store.prompt, input.extmarks.getAllForTypeId(promptPartTypeId)))
   }
 
   const stashCommands = createMemo(() =>
@@ -1127,11 +1048,9 @@ export function Prompt(props: PromptProps) {
     const inputText = expandTrackedPastedText(
       store.prompt.text,
       input.extmarks.getAllForTypeId(promptPartTypeId).flatMap((extmark) => {
-        const ref = store.extmarkToPart.get(extmark.id)
-        if (ref?.type !== "pasted") return []
-        const part = store.prompt.pasted[ref.index]
-        if (!part) return []
-        return [{ start: extmark.start, end: extmark.end, text: part.text }]
+        const part = extmark.data as PromptPart
+        if (part.type !== "pasted") return []
+        return [{ start: extmark.start, end: extmark.end, text: part.value.text }]
       }),
     )
     const slash = argumentSlash(inputText, keymapCommands())
@@ -1405,36 +1324,35 @@ export function Prompt(props: PromptProps) {
 
     input.insertText(virtualText + " ")
 
-    const extmarkId = input.extmarks.create({
+    const part = {
+      text,
+      source: { start: extmarkStart, end: extmarkEnd, text: virtualText },
+    }
+    createPromptExtmark(input, {
       start: extmarkStart,
       end: extmarkEnd,
       virtual: true,
       styleId: pasteStyleId,
       typeId: promptPartTypeId,
+      data: { type: "pasted", value: part },
     })
 
     setStore(
       produce((draft) => {
-        const index = draft.prompt.pasted.length
-        draft.prompt.pasted.push({
-          text,
-          source: { start: extmarkStart, end: extmarkEnd, text: virtualText },
-        })
-        draft.extmarkToPart.set(extmarkId, { type: "pasted", index })
+        draft.prompt.pasted.push(part)
       }),
     )
   }
 
   function expandPastedText(extmarkId: number) {
     const extmark = input.extmarks.get(extmarkId)
-    const ref = store.extmarkToPart.get(extmarkId)
-    if (!extmark || ref?.type !== "pasted") return false
-    const part = store.prompt.pasted[ref.index]
-    if (!part) return false
+    if (!extmark) return false
+    const part = extmark.data as PromptPart
+    if (part.type !== "pasted") return false
 
     input.extmarks.delete(extmarkId)
     input.setSelection(extmark.start, extmark.end)
-    input.insertText(part.text)
+    input.insertText(part.value.text)
     return true
   }
 
@@ -1457,11 +1375,11 @@ export function Prompt(props: PromptProps) {
     const lineCount = (pastedContent.match(/\n/g)?.length ?? 0) + 1
     if ((lineCount >= 3 || pastedContent.length > 150) && config.prompt?.paste !== "full") {
       const extmark = input.extmarks.getAllForTypeId(promptPartTypeId).find((extmark) => {
-        const ref = store.extmarkToPart.get(extmark.id)
+        const part = extmark.data as PromptPart
         return (
           (extmark.end === input.cursorOffset || extmark.end + 1 === input.cursorOffset) &&
-          ref?.type === "pasted" &&
-          store.prompt.pasted[ref.index]?.text === pastedContent
+          part.type === "pasted" &&
+          part.value.text === pastedContent
         )
       })
       if (extmark && expandPastedText(extmark.id)) return
@@ -1487,14 +1405,6 @@ export function Prompt(props: PromptProps) {
 
     input.insertText(textToInsert)
 
-    const extmarkId = input.extmarks.create({
-      start: extmarkStart,
-      end: extmarkEnd,
-      virtual: true,
-      styleId: pasteStyleId,
-      typeId: promptPartTypeId,
-    })
-
     const part: NonNullable<PromptInfo["files"]>[number] = {
       uri: file.uri,
       name: file.filename,
@@ -1504,12 +1414,18 @@ export function Prompt(props: PromptProps) {
         text: virtualText,
       },
     }
+    createPromptExtmark(input, {
+      start: extmarkStart,
+      end: extmarkEnd,
+      virtual: true,
+      styleId: pasteStyleId,
+      typeId: promptPartTypeId,
+      data: { type: "file", value: part },
+    })
     setStore(
       produce((draft) => {
         const files = (draft.prompt.files ??= [])
-        const index = files.length
         files.push(part)
-        draft.extmarkToPart.set(extmarkId, { type: "file", index })
       }),
     )
   }
@@ -1825,7 +1741,7 @@ export function Prompt(props: PromptProps) {
                 r.target?.focus()
                 const extmark = input.extmarks
                   .getAtOffset(input.cursorOffset)
-                  .find((item) => store.extmarkToPart.get(item.id)?.type === "pasted")
+                  .find((item) => item.typeId === promptPartTypeId && (item.data as PromptPart).type === "pasted")
                 if (!extmark || !expandPastedText(extmark.id)) return
                 r.preventDefault()
                 r.stopPropagation()
@@ -2001,13 +1917,6 @@ export function Prompt(props: PromptProps) {
         input={() => input}
         setPrompt={(cb) => {
           setStore("prompt", produce(cb))
-        }}
-        setExtmark={(part, extmarkId) => {
-          setStore("extmarkToPart", (map: Map<number, PromptPartRef>) => {
-            const newMap = new Map(map)
-            newMap.set(extmarkId, part)
-            return newMap
-          })
         }}
         value={store.prompt.text}
         fileStyleId={fileStyleId}

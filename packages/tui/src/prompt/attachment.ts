@@ -55,11 +55,13 @@ export function preserveMentionlessPromptAttachments(
 ) {
   if (!files) return mentioned
   const tracked = mentioned.values()
-  return files.flatMap((file) => {
+  const result = files.flatMap((file) => {
     if (!file.mention?.text) return [file]
     const next = tracked.next()
     return next.done ? [] : [next.value]
   })
+  result.push(...tracked)
+  return result
 }
 
 export function deduplicateVisibleImages<T extends ProjectedFile>(files: readonly T[]) {

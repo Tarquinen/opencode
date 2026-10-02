@@ -1,0 +1,100 @@
+diff --git a/chunk-bun-sjw2d9bq.js b/chunk-bun-sjw2d9bq.js
+index a28320a281f82eea0833ad1f5868d0f8c74c9602..f6d3d332a1bc950bed79ea24aed9c61cd246b5a8 100644
+--- a/chunk-bun-sjw2d9bq.js
++++ b/chunk-bun-sjw2d9bq.js
+@@ -9884,6 +9884,7 @@ class ExtmarksController2 {
+         return;
+       }
+       this.clear();
++      this.history.clear();
+       this.originalSetText(text);
+     };
+     this.editBuffer.replaceText = (text) => {
+@@ -10140,6 +10141,13 @@ class ExtmarksController2 {
+   restoreSnapshot(snapshot) {
+     this.extmarks = new Map(Array.from(snapshot.extmarks.entries()).map(([id, extmark]) => [id, { ...extmark }]));
+     this.nextId = snapshot.nextId;
++    this.extmarksByTypeId.clear();
++    for (const extmark of this.extmarks.values()) {
++      if (!this.extmarksByTypeId.has(extmark.typeId)) {
++        this.extmarksByTypeId.set(extmark.typeId, new Set);
++      }
++      this.extmarksByTypeId.get(extmark.typeId).add(extmark.id);
++    }
+     this.updateHighlights();
+   }
+   wrapUndoRedo() {
+@@ -10156,8 +10164,10 @@ class ExtmarksController2 {
+       };
+       this.history.pushRedo(currentSnapshot);
+       const snapshot = this.history.undo();
++      const result = this.originalUndo();
+       this.restoreSnapshot(snapshot);
+-      return this.originalUndo();
++      this.editBuffer.emit("content-changed");
++      return result;
+     };
+     this.editBuffer.redo = () => {
+       if (this.destroyed) {
+@@ -10172,8 +10182,10 @@ class ExtmarksController2 {
+       };
+       this.history.pushUndo(currentSnapshot);
+       const snapshot = this.history.redo();
++      const result = this.originalRedo();
+       this.restoreSnapshot(snapshot);
+-      return this.originalRedo();
++      this.editBuffer.emit("content-changed");
++      return result;
+     };
+   }
+   registerType(typeName) {
+diff --git a/chunk-node-80p7e6t6.js b/chunk-node-80p7e6t6.js
+index 82915fa04684c45affab3b7297e8917f89dc5dc6..fc9c53976d9248c4373fa0138804307543d86708 100644
+--- a/chunk-node-80p7e6t6.js
++++ b/chunk-node-80p7e6t6.js
+@@ -9866,6 +9866,7 @@ class ExtmarksController2 {
+         return;
+       }
+       this.clear();
++      this.history.clear();
+       this.originalSetText(text);
+     };
+     this.editBuffer.replaceText = (text) => {
+@@ -10122,6 +10123,13 @@ class ExtmarksController2 {
+   restoreSnapshot(snapshot) {
+     this.extmarks = new Map(Array.from(snapshot.extmarks.entries()).map(([id, extmark]) => [id, { ...extmark }]));
+     this.nextId = snapshot.nextId;
++    this.extmarksByTypeId.clear();
++    for (const extmark of this.extmarks.values()) {
++      if (!this.extmarksByTypeId.has(extmark.typeId)) {
++        this.extmarksByTypeId.set(extmark.typeId, new Set);
++      }
++      this.extmarksByTypeId.get(extmark.typeId).add(extmark.id);
++    }
+     this.updateHighlights();
+   }
+   wrapUndoRedo() {
+@@ -10138,8 +10146,10 @@ class ExtmarksController2 {
+       };
+       this.history.pushRedo(currentSnapshot);
+       const snapshot = this.history.undo();
++      const result = this.originalUndo();
+       this.restoreSnapshot(snapshot);
+-      return this.originalUndo();
++      this.editBuffer.emit("content-changed");
++      return result;
+     };
+     this.editBuffer.redo = () => {
+       if (this.destroyed) {
+@@ -10154,8 +10164,10 @@ class ExtmarksController2 {
+       };
+       this.history.pushUndo(currentSnapshot);
+       const snapshot = this.history.redo();
++      const result = this.originalRedo();
+       this.restoreSnapshot(snapshot);
+-      return this.originalRedo();
++      this.editBuffer.emit("content-changed");
++      return result;
+     };
+   }
+   registerType(typeName) {

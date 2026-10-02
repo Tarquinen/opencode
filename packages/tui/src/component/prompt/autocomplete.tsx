@@ -16,7 +16,8 @@ import { useTheme } from "../../context/theme"
 import { SplitBorder } from "../../ui/border"
 import { useTerminalDimensions } from "@opentui/solid"
 import { Locale } from "../../util/locale"
-import type { PromptInfo, PromptPartRef } from "../../prompt/history"
+import type { PromptInfo } from "../../prompt/history"
+import { createPromptExtmark } from "../../prompt/extmark"
 import { useFrecency } from "../../prompt/frecency"
 import { Keymap, type KeymapCommand } from "../../context/keymap"
 import { displayCharAt, mentionTriggerIndex, slashTriggerIndex } from "../../prompt/display"
@@ -62,7 +63,6 @@ export function Autocomplete(props: {
   argumentAutocomplete?: (command: KeymapCommand) => "directory" | undefined
   directoryOptions?: (query: string) => AutocompleteOption[]
   setPrompt: (input: (prompt: PromptInfo) => void) => void
-  setExtmark: (part: PromptPartRef, extmarkId: number) => void
   anchor: () => BoxRenderable
   input: () => TextareaRenderable
   ref: (ref: AutocompleteRef) => void
@@ -181,12 +181,14 @@ export function Autocomplete(props: {
     const styleId =
       part.type === "file" ? props.fileStyleId : part.type === "skill" ? props.skillStyleId : props.agentStyleId
 
-    const extmarkId = input.extmarks.create({
+    part.value.mention = { start: extmarkStart, end: extmarkEnd, text: virtualText }
+    createPromptExtmark(input, {
       start: extmarkStart,
       end: extmarkEnd,
       virtual: true,
       styleId,
       typeId: props.promptPartTypeId(),
+      data: part,
     })
 
     props.setPrompt((draft) => {
@@ -202,40 +204,19 @@ export function Autocomplete(props: {
           }
           return
         }
-        if (part.value.mention) {
-          part.value.mention.start = extmarkStart
-          part.value.mention.end = extmarkEnd
-          part.value.mention.text = virtualText
-        }
-        const index = files.length
         files.push(part.value)
-        props.setExtmark({ type: "file", index }, extmarkId)
         return
       }
 
       if (part.type === "skill") {
         const skills = (draft.skills ??= [])
         if (skills.some((skill) => skill.id === part.value.id)) return
-        if (part.value.mention) {
-          part.value.mention.start = extmarkStart
-          part.value.mention.end = extmarkEnd
-          part.value.mention.text = virtualText
-        }
-        const index = skills.length
         skills.push(part.value)
-        props.setExtmark({ type: "skill", index }, extmarkId)
         return
       }
 
       const agents = (draft.agents ??= [])
-      if (part.value.mention) {
-        part.value.mention.start = extmarkStart
-        part.value.mention.end = extmarkEnd
-        part.value.mention.text = virtualText
-      }
-      const index = agents.length
       agents.push(part.value)
-      props.setExtmark({ type: "agent", index }, extmarkId)
     })
 
     if (part.type === "file" && part.path) frecency.updateFrecency(part.path)

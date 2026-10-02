@@ -101,6 +101,8 @@ describe("prompt attachments", () => {
       mentionless,
       mentioned,
     ])
+    expect(preserveMentionlessPromptAttachments([mentionless], [mentioned])).toEqual([mentionless, mentioned])
+    expect(preserveMentionlessPromptAttachments([], [mentioned])).toEqual([mentioned])
   })
 
   test("deduplicates visible inline image cards without dropping durable references", () => {

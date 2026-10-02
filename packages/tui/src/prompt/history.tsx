@@ -22,11 +22,6 @@ export type PromptInfo = Types.DeepMutable<Pick<PromptInput.Prompt, "text" | "fi
   mode?: "normal" | "shell"
 }
 
-export type PromptPartRef = {
-  type: "file" | "agent" | "skill" | "pasted"
-  index: number
-}
-
 export const emptyPrompt = (): PromptInfo => ({ text: "", files: [], agents: [], skills: [], pasted: [] })
 
 // Part ranges are textarea offsets, so shift by display width rather than string length.

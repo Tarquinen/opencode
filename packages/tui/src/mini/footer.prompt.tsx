@@ -623,15 +623,8 @@ export function createPromptState(input: PromptInput): PromptState {
     )
     let tracked = 0
     for (const item of area.extmarks.getAllForTypeId(type)) {
-      const idx = marks.get(item.id)
-      if (idx === undefined) {
-        continue
-      }
-
-      const part = parts[idx]
-      if (!part) {
-        continue
-      }
+      const idx = marks.get(item.id) ?? next.length
+      const part = item.data as Mention
 
       const text = displaySlice(area.plainText, item.start, item.end)
       const prev =
@@ -702,6 +695,7 @@ export function createPromptState(input: PromptInput): PromptState {
         end,
         virtual: true,
         typeId: type,
+        data: structuredClone(item),
       })
       marks.set(id, idx)
     })
@@ -847,15 +841,16 @@ export function createPromptState(input: PromptInput): PromptState {
     area.insertText(value + " ")
     const end = area.cursorOffset - 1
     const start = end - stringWidth(value)
-    const id = area.extmarks.create({ start, end, virtual: true, typeId: type })
-    marks.set(id, parts.length)
-    parts.push({
+    const part: Mention = {
       type: "file",
       url: file.uri,
       filename: file.filename,
       mime: file.uri.slice(5, file.uri.indexOf(";")),
       source: { type: "file", text: { start, end, value } },
-    })
+    }
+    const id = area.extmarks.create({ start, end, virtual: true, typeId: type, data: structuredClone(part) })
+    marks.set(id, parts.length)
+    parts.push(part)
     syncDraft()
   }
 
@@ -1127,6 +1122,7 @@ export function createPromptState(input: PromptInput): PromptState {
       end: endOffset,
       virtual: true,
       typeId: type,
+      data: structuredClone(part),
     })
     marks.set(id, parts.length)
     parts.push(part)
