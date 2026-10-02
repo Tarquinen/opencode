@@ -483,8 +483,11 @@ function App() {
   const plugins = usePlugin()
   const clipboard = useClipboard()
   const terminalEnvironment = useTuiTerminalEnvironment()
+  const [firstDraw, setFirstDraw] = createSignal<number>()
   let paletteTimer: ReturnType<typeof setTimeout> | undefined
   const afterFrame = () => {
+    // Capture startup timing even when the diagnostic and DevTools bar are hidden.
+    setFirstDraw(performance.now())
     // The native writer can still be flushing the frame when FRAME fires. Keep OSC probes behind visible app output.
     paletteTimer = setTimeout(afterPaint, 50)
   }
@@ -1391,7 +1394,7 @@ function App() {
         </Show>
       </box>
       <Show when={devtools() && !(route.data.type === "plugin" && route.data.id === "opencode.stats")}>
-        <DevToolsBar />
+        <DevToolsBar firstDraw={firstDraw()} />
       </Show>
       <Show when={!startup.skipInitialLoading}>
         <StartupLoading ready={plugins.ready} />

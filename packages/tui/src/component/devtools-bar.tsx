@@ -1,5 +1,5 @@
 import { CliRenderEvents, TextAttributes, type Renderable } from "@opentui/core"
-import { TimeToFirstDraw, useRenderer, useTerminalDimensions } from "@opentui/solid"
+import { useRenderer, useTerminalDimensions } from "@opentui/solid"
 import { open } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import path from "node:path"
@@ -26,7 +26,7 @@ type Panel = "server" | "theme" | "tools" | "ui"
 type ProcessSample = Readonly<{ cpu: number; memory: number; delay: number; time: number }>
 export type RuntimeStatus = "normal" | "medium" | "high"
 
-export function DevToolsBar() {
+export function DevToolsBar(props: { firstDraw: number | undefined }) {
   const client = useClient()
   const config = useConfig()
   const dialog = useDialog()
@@ -435,8 +435,16 @@ export function DevToolsBar() {
       >
         <text fg={theme.text.muted}>Experiments</text>
       </BarItem>
-      <box flexGrow={1} minWidth={0}>
-        <TimeToFirstDraw visible={timing()} width="100%" fg={theme.text.muted} label="Time to first draw" />
+      <box flexGrow={1} minWidth={0} flexDirection="row" justifyContent="center">
+        <text
+          visible={timing() && props.firstDraw !== undefined}
+          maxWidth="100%"
+          height={1}
+          wrapMode="none"
+          fg={theme.text.muted}
+        >
+          Time to first draw: {props.firstDraw?.toFixed(2)}ms
+        </text>
       </box>
     </box>
   )
