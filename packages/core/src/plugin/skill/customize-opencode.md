@@ -122,7 +122,7 @@ Every field is optional.
   },
 
   "plugin": [
-    "opencode-gemini-auth",
+    "opencode-my-plugin",
     "opencode-foo@1.2.3",
     "./local-plugin.ts",
     ["opencode-bar", { "option": "value" }]
@@ -311,7 +311,7 @@ model: anthropic/claude-sonnet-4-6
 
 ```json
 "plugin": [
-  "opencode-gemini-auth",            // npm spec, latest
+  "opencode-my-plugin",              // npm spec, latest
   "opencode-foo@1.2.3",              // npm spec, pinned
   "./local-plugin.ts",               // file path, relative to the declaring config
   "file:///abs/path/plugin.js",      // file URL
