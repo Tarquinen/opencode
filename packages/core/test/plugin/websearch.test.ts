@@ -334,7 +334,9 @@ describe("built-in web search providers", () => {
           ],
         }),
       )
-      expect(requests[0]).toMatchObject({
+      expect(requests[0]?.body).toMatchObject({ method: "initialize" })
+      expect(requests[1]?.body).toMatchObject({ method: "notifications/initialized" })
+      expect(requests[2]).toMatchObject({
         url: WebSearchTinyFish.endpoint,
         headers: { "x-tinyfish-access-mode": "keyless" },
         body: {
@@ -347,17 +349,17 @@ describe("built-in web search providers", () => {
           },
         },
       })
-      expect(requests[0]?.headers.authorization).toBeUndefined()
+      expect(requests[2]?.headers.authorization).toBeUndefined()
 
       yield* integrations.connection.key({
         integrationID: Integration.ID.make("tinyfish"),
         key: "tinyfish-secret",
       })
       yield* websearch.query({ query: "effect typescript", providerID: WebSearch.ID.make("tinyfish") })
-      expect(requests[1]).toMatchObject({
+      expect(requests[5]).toMatchObject({
         headers: { "x-api-key": "tinyfish-secret" },
       })
-      expect(requests[1]?.headers["x-tinyfish-access-mode"]).toBeUndefined()
+      expect(requests[5]?.headers["x-tinyfish-access-mode"]).toBeUndefined()
     }),
   )
 })
