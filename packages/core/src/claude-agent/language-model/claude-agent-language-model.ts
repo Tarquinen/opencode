@@ -46,6 +46,8 @@ export class Model implements LanguageModelV3 {
     const settings = options.providerOptions?.[Provider.ID.claudeAgent]
     const role = settings?.[ClaudeSystemPrompt.AGENT_OPTION]
     const agent = typeof role === "string" ? role : undefined
+    const loaded = settings?.[ClaudeSystemPrompt.INSTRUCTIONS_OPTION]
+    const instructions = typeof loaded === "string" ? loaded : undefined
     const effort = parseEffort(settings?.effort)
     const primary = kind === "primary"
     const branch = kind === "generate" || kind === "compaction"
@@ -56,7 +58,7 @@ export class Model implements LanguageModelV3 {
     const offered = primary || branch ? tools : []
     // Titles are standalone tasks, so OpenCode's system prompt replaces Claude Code's.
     const system =
-      primary || branch ? ClaudeSystemPrompt.make(options.prompt, agent) : ClaudeSystemPrompt.utility(options.prompt)
+      primary || branch ? ClaudeSystemPrompt.make(agent, instructions) : ClaudeSystemPrompt.utility(options.prompt)
     let cancelled = false
     let task: Promise<void>
     const stream = new ReadableStream({

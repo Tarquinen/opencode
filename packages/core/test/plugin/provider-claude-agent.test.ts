@@ -1,4 +1,4 @@
-import { Message } from "@opencode/ai/effect"
+import { Message, SystemPart } from "@opencode/ai/effect"
 import type { LanguageModelV3 } from "@ai-sdk/provider"
 import { AISDK } from "@opencode/core/aisdk"
 import { Agent } from "@opencode/core/agent"
@@ -256,7 +256,7 @@ describe("ClaudeAgentPlugin session hooks", () => {
     sessionID,
     agent: Agent.ID.make(agent),
     model: haiku,
-    system: [],
+    system: [] as SystemPart[],
     messages: [] as Message[],
     options: { maxTokens: 32_000 } as Record<string, unknown>,
     tools: {},
@@ -349,6 +349,31 @@ describe("ClaudeAgentPlugin session hooks", () => {
         const build = yield* hooks.trigger("session", kind, hookEvent(session.id, "build"))
         expect(build.options[ClaudeSystemPrompt.AGENT_OPTION]).toBe("")
       }
+    }),
+  )
+
+  it.live("passes opencode's instructions to Claude, except the date and environment Claude Code writes itself", () =>
+    Effect.gen(function* () {
+      yield* addPlugin(FakeIO.make({ claude: FakeClaude.make([]) }))
+      yield* addAgents
+      const hooks = yield* PluginHooks.Service
+      const event = hookEvent((yield* newSession).id)
+      event.system = [
+        SystemPart.make("OPENCODE-PROMPT"),
+        {
+          ...SystemPart.make("JOINED-INSTRUCTIONS"),
+          metadata: {
+            instructions: [
+              { key: "core/skill-guidance", text: "SKILLS" },
+              { key: "core/date", text: "DATE" },
+              { key: "core/environment", text: "ENVIRONMENT" },
+              { key: "api/deploy-target", text: "ENTRY" },
+            ],
+          },
+        },
+      ]
+      const context = yield* hooks.trigger("session", "context", event)
+      expect(context.options[ClaudeSystemPrompt.INSTRUCTIONS_OPTION]).toBe("SKILLS\n\nENTRY")
     }),
   )
 
