@@ -339,7 +339,6 @@ describe("Claude sessions", () => {
       expect(chat.sdkMcpServers).toEqual(["opencode"])
       expect(branch.sdkMcpServers).toEqual(chat.sdkMcpServers)
       expect(branch.appendSystemPrompt).toBe(chat.appendSystemPrompt)
-      expect(branch.appendSystemPrompt).toContain("<opencode_tools>")
       // The reply ends at the tool call, and the throwaway process and fork are cleaned up.
       expect(parts.filter((part) => part.type === "tool-call")).toHaveLength(2)
       yield* Effect.promise(() => claude.runs[1]!.closed)

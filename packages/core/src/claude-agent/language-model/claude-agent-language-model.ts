@@ -56,9 +56,7 @@ export class Model implements LanguageModelV3 {
     const offered = primary || branch ? tools : []
     // Titles are standalone tasks, so OpenCode's system prompt replaces Claude Code's.
     const system =
-      primary || branch
-        ? ClaudeSystemPrompt.make(options.prompt, offered.length > 0, agent)
-        : ClaudeSystemPrompt.utility(options.prompt)
+      primary || branch ? ClaudeSystemPrompt.make(options.prompt, agent) : ClaudeSystemPrompt.utility(options.prompt)
     let cancelled = false
     let task: Promise<void>
     const stream = new ReadableStream({
