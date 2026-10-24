@@ -5,6 +5,7 @@ import { Effect, Option, Schema, Stream, SubscriptionRef } from "effect"
 import { Model } from "../../model.js"
 import { Provider } from "../../provider.js"
 import type { ClaudeProbe } from "../claude/probe.js"
+import { ClaudeQueryOptions } from "../claude/query-options.js"
 import type { ClaudeStatus } from "../claude/status.js"
 
 export const ID = Provider.ID.claudeAgent
@@ -55,6 +56,13 @@ export const register = Effect.fn("ClaudeProvider.register")(function* (ctx: Con
   if (current.catalog.length === 0 && (yield* ctx.integration.connection.active(ID))) {
     yield* status.refresh().pipe(Effect.forkScoped)
   }
+})
+
+export const connection = Effect.fn("ClaudeProvider.connection")(function* (ctx: Context) {
+  const provider = yield* ctx.provider.get({ providerID: ID }).pipe(Effect.option)
+  if (Option.isNone(provider)) return {}
+  const info = provider.value.data
+  return ClaudeQueryOptions.connectionEnv({ settings: info.settings, headers: info.headers, body: info.body })
 })
 
 // Context windows only come from the full check, so a chat's startup report keeps the saved ones.

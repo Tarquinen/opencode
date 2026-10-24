@@ -346,3 +346,79 @@ describe("ClaudeAgentPlugin session hooks", () => {
     }),
   )
 })
+
+describe("ClaudeAgentPlugin provider config", () => {
+  it.live("passes the configured connection to Claude Code, for the login check and for chats", () =>
+    Effect.gen(function* () {
+      // The login check is answered by `probes`, so the script is only the chat
+      const claude = FakeClaude.make(
+        [FakeClaude.expectStartup(), FakeClaude.expectTurn(), FakeClaude.expectInterrupt()],
+        { probes: true },
+      )
+      const registry = yield* addPlugin(
+        FakeIO.make({ claude, env: { ANTHROPIC_BASE_URL: "https://from-shell.example" } }),
+      )
+      yield* (yield* Provider.Service).transform((editor) => {
+        editor.update(ClaudeProvider.ID, (provider) => {
+          provider.settings = {
+            baseURL: "https://gateway.example",
+            authToken: "config-token",
+            headerTimeout: 60000,
+            chunkTimeout: 600000,
+          }
+          provider.headers = { "X-Team": "core" }
+          provider.body = { metadata: { user_id: "dan" } }
+        })
+        editor.models.update(ClaudeProvider.ID, haiku.id, (model) => {
+          model.settings = { baseURL: "https://haiku-gateway.example" }
+          model.headers = { "X-Model": "haiku" }
+        })
+      })
+      yield* connect
+      yield* eventually(claudeModels, (models) => models.some((model) => model.id === "sonnet"))
+
+      const check = claude.runs[0]!.env
+      expect(check.ANTHROPIC_BASE_URL).toBe("https://gateway.example")
+      expect(check.ANTHROPIC_AUTH_TOKEN).toBe("config-token")
+      expect(check.API_TIMEOUT_MS).toBe("60000")
+      expect(check.CLAUDE_STREAM_IDLE_TIMEOUT_MS).toBe("600000")
+      expect(check.ANTHROPIC_CUSTOM_HEADERS).toBe("X-Team: core")
+      expect(check.CLAUDE_CODE_EXTRA_BODY).toBe(JSON.stringify({ metadata: { user_id: "dan" } }))
+
+      const model = yield* (yield* Model.Service).get(ClaudeProvider.ID, haiku.id)
+      if (!model) throw new Error("Expected the haiku model")
+      const language = yield* (yield* AISDK.Service).language(model)
+      const result = yield* Effect.promise(() =>
+        language.doStream({
+          prompt: TestSessions.prompt("Remember the marker COPPER-OTTER. Reply only with that marker."),
+          headers: { [RequestKind.SESSION_HEADER]: "session-a", [RequestKind.HEADER]: "primary" },
+        }),
+      )
+      expect(TestSessions.text(yield* Effect.promise(() => TestSessions.collect(result.stream)))).toBe("COPPER-OTTER")
+
+      // Model settings override the provider's, and only configured headers are sent, not opencode's own
+      const chat = claude.runs.find((run) => run.args.includes("--include-partial-messages"))!.env
+      expect(chat.ANTHROPIC_BASE_URL).toBe("https://haiku-gateway.example")
+      expect(chat.ANTHROPIC_AUTH_TOKEN).toBe("config-token")
+      expect(chat.ANTHROPIC_CUSTOM_HEADERS).toBe("X-Team: core\nX-Model: haiku")
+      expect(chat.CLAUDE_CODE_EXTRA_BODY).toBe(JSON.stringify({ metadata: { user_id: "dan" } }))
+      yield* registry.close()
+      claude.check()
+    }),
+  )
+
+  it.live("leaves the user's environment alone when nothing is configured", () =>
+    Effect.gen(function* () {
+      const onConnect = FakeClaude.expectStartup()
+      const claude = FakeClaude.make([onConnect])
+      yield* addPlugin(FakeIO.make({ claude, env: { ANTHROPIC_BASE_URL: "https://from-shell.example" } }))
+      yield* connect
+      yield* Effect.promise(() => claude.reached(onConnect))
+      const env = claude.runs[0]!.env
+      expect(env.ANTHROPIC_BASE_URL).toBe("https://from-shell.example")
+      expect(env.ANTHROPIC_CUSTOM_HEADERS).toBeUndefined()
+      expect(env.CLAUDE_CODE_EXTRA_BODY).toBeUndefined()
+      claude.check()
+    }),
+  )
+})

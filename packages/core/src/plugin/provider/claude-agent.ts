@@ -27,7 +27,7 @@ export const make = (io: ClaudeIO.Interface, registry = ClaudeSessions.registry(
       if (Option.isSome(location) && location.value.workspaceID !== undefined) return
       if (Option.isSome(environment) && environment.value.spawner === EnvironmentUnavailable.spawner) return
 
-      const status = yield* ClaudeStatus.make(io)
+      const status = yield* ClaudeStatus.make(io, () => ClaudeProvider.connection(ctx))
       const sessions = yield* registry.attach({ io, status, storage: ctx.storage, directory: ctx.location.directory })
       yield* ClaudeProvider.register(ctx, status)
       yield* ClaudeIntegration.register(ctx, status)

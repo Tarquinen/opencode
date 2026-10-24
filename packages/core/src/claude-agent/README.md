@@ -12,6 +12,8 @@ The plugin is `plugin/provider/claude-agent.ts`. Everything else lives in this f
 
 opencode uses `claude` from `PATH`. Set `OPENCODE_CLAUDE_PATH` to use another binary. The `@anthropic-ai/claude-agent-sdk` package must be installed; it is an optional peer dependency of core.
 
+Provider config for `claude-agent` (`settings.baseURL`, `apiKey`, `authToken`, `headerTimeout`, `chunkTimeout`, plus `headers` and `body`) is passed to Claude Code as its matching environment variables. A model's own config overrides the provider's.
+
 ## Ground rules
 
 - **Documented SDK features only.** Public SDK options, hooks, messages and documented environment variables. We never proxy or rewrite Claude Code's API requests.
