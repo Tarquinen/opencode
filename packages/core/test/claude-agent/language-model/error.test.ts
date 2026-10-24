@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test"
-import type { SDKAssistantMessage, SDKRateLimitEvent } from "@anthropic-ai/claude-agent-sdk"
+import type { LanguageModelV3StreamPart } from "@ai-sdk/provider"
+import type { SDKAssistantMessage, SDKMessage, SDKRateLimitEvent } from "@anthropic-ai/claude-agent-sdk"
 import { ConvertClaudeStream } from "@opencode/core/claude-agent/language-model/convert-claude-stream"
 import { Recorder } from "../lib/recorder"
 
@@ -12,6 +13,19 @@ function assistant() {
 }
 
 describe("terminal errors", () => {
+  test("a recorded failed turn ends in an error after its text, without a finish", () => {
+    const convert = ConvertClaudeStream.make()
+    const parts: LanguageModelV3StreamPart[] = []
+    for (const line of Recorder.load("text-cancel")) {
+      if (line.from !== "claude" || line.message.type === "control_response") continue
+      parts.push(...convert(line.message as SDKMessage))
+      if (line.message.type === "result") break
+    }
+    expect(parts.some((part) => part.type === "text-delta")).toBe(true)
+    expect(parts.at(-1)?.type).toBe("error")
+    expect(parts.some((part) => part.type === "finish")).toBe(false)
+  })
+
   test("a recorded billing failure is an error, not answer text", () => {
     const convert = ConvertClaudeStream.make()
     expect(convert(assistant())).toEqual([])

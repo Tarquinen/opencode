@@ -13,7 +13,7 @@ import { RequestKind } from "./request-kind.js"
 import { ClaudeSystemPrompt } from "./system-prompt.js"
 
 export interface Dependencies {
-  readonly run: (request: Parameters<ClaudeSessions.Interface["run"]>[0], signal: AbortSignal) => Promise<void>
+  readonly run: (request: ClaudeSessions.Request, signal: AbortSignal) => Promise<void>
 }
 
 export class Model implements LanguageModelV3 {

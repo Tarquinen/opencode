@@ -26,7 +26,7 @@ Provider config for `claude-agent` (`settings.baseURL`, `apiKey`, `authToken`, `
 
 - Anthropic's [legal and compliance page](https://code.claude.com/docs/en/legal-and-compliance) lets an end user sign in to the **unmodified** Claude Code binary with their own subscription, "including where a platform hosts Claude Code". It forbids third parties from offering Claude.ai login, routing requests through Pro or Max credentials, or collecting or intermediating credentials. We run the user's own `claude`, leave its login alone, and use the SDK as published.
 - Naming: the SDK branding guidelines prefer "Claude Agent" for dropdowns and don't permit "Claude Code" in product names. So the provider is "Claude Agent" with ID `claude-agent`, and "Claude Code" only describes the `claude` binary.
-- [Agent SDK use with a Claude plan](https://support.claude.com/en/articles/15036540) draws from the user's plan limits. Third-party measurements show the SDK uses limits about 1.7× faster than interactive Claude Code.
+- [Agent SDK use with a Claude plan](https://support.claude.com/en/articles/15036540) draws from the user's plan limits.
 
 ## Background: the Claude Agent SDK
 
@@ -242,7 +242,7 @@ Rules:
 | A new attachment type | `language-model/convert-to-claude-message.ts` |
 | A new kind of history change | `sync/decide.ts`, plus a test |
 | A new side-call kind | `language-model/request-kind.ts`, plus a branch in the model |
-| An SDK or Claude Code upgrade | Re-record (below), then start in `claude/` |
+| An SDK or Claude Code upgrade | New recordings (below), then start in `claude/` |
 
 ## Testing
 
@@ -251,7 +251,7 @@ Most tests run the real SDK against a fake `claude`, so they are fast, offline a
 | Level | Where | Real | Faked |
 |---|---|---|---|
 | Pure logic | `test/claude-agent/{sync,tools,language-model}` | Our plain functions | Nothing |
-| Fake Claude Code | `test/claude-agent/{claude,language-model,tools}` | The SDK and our model code | The `claude` program |
+| Fake Claude Code | `test/claude-agent/claude` | The SDK and our model code | The `claude` program |
 | Plugin | `test/plugin/provider-claude-agent.test.ts` | The plugin in opencode's plugin host | The `claude` program |
 
 **Why fake `claude`, not `query()`.** The fragile parts happen inside the SDK as it reacts to `claude`: parked tool calls, `PreToolUse` matching, interrupts and `PostToolUse` PDFs. Faking `query()` would test our copy of that behavior. The SDK's documented `spawnClaudeCodeProcess` option lets `test/claude-agent/lib/fake-claude.ts` stand in for `claude` inside the test process:
@@ -273,13 +273,13 @@ The wire format between the SDK and `claude` is internal and undocumented; recor
 
 ### Recordings
 
-`test/claude-agent/fixtures/recordings/` holds real `claude` traffic in both directions, one complete process per file. The first line holds the Claude Code version, SDK version, model and date. `test/claude-agent/lib/recorder.ts` replaces account email, organization, user name and home paths, and never saves thinking, signatures or redacted thinking.
+`test/claude-agent/fixtures/recordings/` holds real `claude` traffic in both directions, one complete process per file. The first line holds the Claude Code version, SDK version and date. Home paths, account email and organization are replaced. The appended system prompt keeps only OpenCode's fixed text, not the recording machine's skills, Code Mode catalog or instruction files. Recordings never hold thinking, signatures or redacted thinking; `recorder.test.ts` checks the last part.
 
-On a Claude Code or SDK upgrade: update the pinned SDK, re-record, review `git diff` on the recordings, then fix the fake or our code.
+Recording is not scripted yet. On a Claude Code or SDK upgrade: update the pinned SDK, capture new recordings, review `git diff` on them, then fix the fake or our code.
 
 ### Rules
 
-opencode's unit test rules apply. No sleeps: races use `Deferred` and the fake's steps; registry timers use `TestClock`. No `mock.module`; fakes come in through `ClaudeIO`. Each test gets its own temporary folders. Only recording runs start a real `claude`.
+opencode's unit test rules apply. No sleeps: races use `Deferred` and the fake's steps; registry timers use `TestClock`. No `mock.module`; fakes come in through `ClaudeIO`. Each test gets its own temporary folders. No test starts a real `claude`.
 
 ## References
 

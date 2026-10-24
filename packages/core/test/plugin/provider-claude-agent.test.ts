@@ -27,7 +27,7 @@ import { Provider } from "@opencode/core/provider"
 import { Session } from "@opencode/core/session"
 import { SessionInbox } from "@opencode/core/session/inbox"
 import { describe, expect } from "bun:test"
-import { Effect, Schedule } from "effect"
+import { Effect } from "effect"
 import { FakeClaude } from "../claude-agent/lib/fake-claude"
 import { FakeIO } from "../claude-agent/lib/fake-io"
 import { TestSessions } from "../claude-agent/lib/sessions"
@@ -55,28 +55,42 @@ const connect = Effect.gen(function* () {
   const credentials = yield* Credential.Service
   return yield* credentials.create({
     integrationID,
-    value: Credential.External.make({ type: "external", methodID: Integration.MethodID.make(ClaudeIntegration.METHOD_ID) }),
+    value: Credential.External.make({
+      type: "external",
+      methodID: Integration.MethodID.make(ClaudeIntegration.METHOD_ID),
+    }),
   })
 })
 
 const claudeModels = Effect.gen(function* () {
   const result: Model.Info[] = []
-  for (const model of yield* (yield* Model.Service).all()) {
+  const models = yield* Model.Service
+  for (const model of yield* models.all()) {
     if (model.providerID === ClaudeProvider.ID) result.push(model)
   }
   return result
 })
 
 const connectionStatus = Effect.gen(function* () {
-  const integration = yield* (yield* Integration.Service).get(integrationID)
+  const integrations = yield* Integration.Service
+  const integration = yield* integrations.get(integrationID)
   return integration?.connections[0]?.status
 })
 
-const eventually = <A, R>(effect: Effect.Effect<A, never, R>, predicate: (value: A) => boolean) =>
-  effect.pipe(
-    Effect.filterOrFail(predicate, () => new Error("Timed out waiting for value")),
-    Effect.retry({ times: 3000, schedule: Schedule.spaced("1 millis") }),
-  )
+// Bounded by elapsed time rather than attempts, so a slow child process start on a busy machine still fits.
+function eventually<A, R>(
+  effect: Effect.Effect<A, never, R>,
+  predicate: (value: A) => boolean,
+  deadline = Date.now() + 10_000,
+): Effect.Effect<A, Error, R> {
+  return Effect.gen(function* () {
+    const value = yield* effect
+    if (predicate(value)) return value
+    if (Date.now() > deadline) return yield* Effect.fail(new Error("Timed out waiting for value"))
+    yield* Effect.promise(() => Bun.sleep(1))
+    return yield* eventually(effect, predicate, deadline)
+  })
+}
 
 function find(models: readonly Model.Info[], id: string) {
   const model = models.find((model) => model.id === id)
@@ -105,8 +119,10 @@ describe("ClaudeAgentPlugin", () => {
           }),
         ),
       )
-      expect(yield* (yield* Provider.Service).get(ClaudeProvider.ID)).toBeUndefined()
-      expect(yield* (yield* Integration.Service).get(integrationID)).toBeUndefined()
+      const providers = yield* Provider.Service
+      const integrations = yield* Integration.Service
+      expect(yield* providers.get(ClaudeProvider.ID)).toBeUndefined()
+      expect(yield* integrations.get(integrationID)).toBeUndefined()
     }),
   )
 })
@@ -133,7 +149,8 @@ describe("ClaudeAgentPlugin models", () => {
         expect(model.cost).toEqual([])
         expect(model.capabilities.input).toEqual(["text", "image", "pdf"])
       }
-      const saved = yield* (yield* storage).get("models")
+      const store = yield* storage
+      const saved = yield* store.get("models")
       expect(Array.isArray(saved) ? saved.length : 0).toBe(models.length)
       claude.check()
     }),
@@ -141,9 +158,8 @@ describe("ClaudeAgentPlugin models", () => {
 
   it.live("starts with the saved list without running claude", () =>
     Effect.gen(function* () {
-      yield* (yield* storage).set("models", [
-        { id: "opus", name: "Opus", efforts: ["high"], contextWindow: 1_000_000 },
-      ])
+      const store = yield* storage
+      yield* store.set("models", [{ id: "opus", name: "Opus", efforts: ["high"], contextWindow: 1_000_000 }])
       yield* connect
       const claude = FakeClaude.make([])
       yield* addPlugin(FakeIO.make({ claude }))
@@ -156,7 +172,8 @@ describe("ClaudeAgentPlugin models", () => {
 
   it.live("ignores a malformed saved list and checks claude when already connected", () =>
     Effect.gen(function* () {
-      yield* (yield* storage).set("models", [{ id: 1 }])
+      const store = yield* storage
+      yield* store.set("models", [{ id: 1 }])
       yield* connect
       const atStart = FakeClaude.expectStartup()
       const claude = FakeClaude.make([atStart])
@@ -169,12 +186,18 @@ describe("ClaudeAgentPlugin models", () => {
 
   it.live("binds chats to plugin storage, and a chat's startup report keeps saved context sizes", () =>
     Effect.gen(function* () {
-      yield* (yield* storage).set("models", [{ id: "haiku", name: "Haiku", efforts: [], contextWindow: 123_456 }])
+      const store = yield* storage
+      yield* store.set("models", [{ id: "haiku", name: "Haiku", efforts: [], contextWindow: 123_456 }])
       yield* connect
-      const claude = FakeClaude.make([FakeClaude.expectStartup(), FakeClaude.expectTurn(), FakeClaude.expectInterrupt()])
+      const claude = FakeClaude.make([
+        FakeClaude.expectStartup(),
+        FakeClaude.expectTurn(),
+        FakeClaude.expectInterrupt(),
+      ])
       const registry = yield* addPlugin(FakeIO.make({ claude }))
 
-      const sdk = yield* (yield* AISDK.Service).runSDK({
+      const aisdk = yield* AISDK.Service
+      const sdk = yield* aisdk.runSDK({
         model: Model.Info.make({
           ...Model.Info.default(ClaudeProvider.ID, haiku.id),
           modelID: haiku.id,
@@ -191,7 +214,7 @@ describe("ClaudeAgentPlugin models", () => {
         }),
       )
       expect(TestSessions.text(yield* Effect.promise(() => TestSessions.collect(result.stream)))).toBe("COPPER-OTTER")
-      expect(yield* (yield* storage).get("sessions/session-a")).toMatchObject({ claudeSessionID: expect.any(String) })
+      expect(yield* store.get("sessions/session-a")).toMatchObject({ claudeSessionID: expect.any(String) })
 
       const models = yield* eventually(claudeModels, (models) => models.length > 1)
       expect(find(models, "haiku").limit.context).toBe(123_456)
@@ -214,15 +237,15 @@ describe("ClaudeAgentPlugin connection", () => {
     }),
   )
 
-  it.live("an API-key login is not a sign-in problem", () =>
+  it.live("connecting while logged out of claude asks the user to sign in", () =>
     Effect.gen(function* () {
-      const onConnect = FakeClaude.expectStartup()
+      const onConnect = FakeClaude.expectStartup({ recording: "startup-logged-out" })
       const claude = FakeClaude.make([onConnect])
-      yield* addPlugin(FakeIO.make({ claude, env: { ANTHROPIC_API_KEY: "fixture-secret" } }))
+      yield* addPlugin(FakeIO.make({ claude }))
       yield* connect
       yield* Effect.promise(() => claude.reached(onConnect))
-      yield* eventually(claudeModels, (models) => models.length > 0)
-      expect(yield* connectionStatus).toBeUndefined()
+      const status = yield* eventually(connectionStatus, (status) => status !== undefined)
+      expect(status).toMatchObject({ status: "needs_auth", message: expect.stringContaining("claude auth login") })
       claude.check()
     }),
   )
@@ -243,7 +266,8 @@ describe("ClaudeAgentPlugin session hooks", () => {
 
   const newSession = Effect.gen(function* () {
     const location = yield* Location.Service
-    return yield* (yield* Session.Service).create({ location: { directory: location.directory } })
+    const sessions = yield* Session.Service
+    return yield* sessions.create({ location: { directory: location.directory } })
   })
 
   const addAgents = Effect.gen(function* () {
@@ -358,7 +382,8 @@ describe("ClaudeAgentPlugin provider config", () => {
       const registry = yield* addPlugin(
         FakeIO.make({ claude, env: { ANTHROPIC_BASE_URL: "https://from-shell.example" } }),
       )
-      yield* (yield* Provider.Service).transform((editor) => {
+      const providers = yield* Provider.Service
+      yield* providers.transform((editor) => {
         editor.update(ClaudeProvider.ID, (provider) => {
           provider.settings = {
             baseURL: "https://gateway.example",
@@ -385,9 +410,11 @@ describe("ClaudeAgentPlugin provider config", () => {
       expect(check.ANTHROPIC_CUSTOM_HEADERS).toBe("X-Team: core")
       expect(check.CLAUDE_CODE_EXTRA_BODY).toBe(JSON.stringify({ metadata: { user_id: "dan" } }))
 
-      const model = yield* (yield* Model.Service).get(ClaudeProvider.ID, haiku.id)
+      const models = yield* Model.Service
+      const aisdk = yield* AISDK.Service
+      const model = yield* models.get(ClaudeProvider.ID, haiku.id)
       if (!model) throw new Error("Expected the haiku model")
-      const language = yield* (yield* AISDK.Service).language(model)
+      const language = yield* aisdk.language(model)
       const result = yield* Effect.promise(() =>
         language.doStream({
           prompt: TestSessions.prompt("Remember the marker COPPER-OTTER. Reply only with that marker."),

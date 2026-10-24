@@ -5,7 +5,7 @@ import type { LanguageModelV3Prompt } from "@ai-sdk/provider"
 
 export const AGENT_OPTION = "claudeCodeAgent"
 
-export const primary = {
+const primary = {
   type: "preset",
   preset: "claude_code",
   // Agent changes must take effect when a process resumes the same native session.

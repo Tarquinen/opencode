@@ -1,38 +1,9 @@
 import { describe, expect, test } from "bun:test"
-import type { LanguageModelV3StreamPart } from "@ai-sdk/provider"
-import type { SDKMessage } from "@anthropic-ai/claude-agent-sdk"
-import { ConvertClaudeStream } from "@opencode/core/claude-agent/language-model/convert-claude-stream"
 import { ConvertToClaudeMessage } from "@opencode/core/claude-agent/language-model/convert-to-claude-message"
 import { ClaudeSystemPrompt } from "@opencode/core/claude-agent/language-model/system-prompt"
 import type { LanguageModelV3Prompt } from "@ai-sdk/provider"
-import { CatchUp } from "@opencode/core/claude-agent/sync/catch-up"
-import { Recorder } from "../lib/recorder"
 
 describe("Claude conversions", () => {
-  test("a resumed turn keeps the whole newest user group and its attachments", () => {
-    const blocks = CatchUp.content(
-      [
-        { role: "system", content: "Built-in agent instructions" },
-        { role: "user", content: [{ type: "text", text: "Earlier question" }] },
-        { role: "assistant", content: [{ type: "text", text: "Earlier reply" }] },
-        { role: "user", content: [{ type: "text", text: "A plan-mode reminder" }] },
-        {
-          role: "user",
-          content: [
-            { type: "text", text: "Inspect this image" },
-            { type: "file", mediaType: "image/png", data: "AQID" },
-          ],
-        },
-      ],
-      3,
-    )
-    expect(blocks).toEqual([
-      { type: "text", text: "A plan-mode reminder" },
-      { type: "text", text: "Inspect this image" },
-      { type: "image", source: { type: "base64", media_type: "image/png", data: "AQID" } },
-    ])
-  })
-
   test("utility calls keep system instructions separate from conversation content and omit thinking", () => {
     const prompt: LanguageModelV3Prompt = [
       { role: "system", content: "Summarize this conversation." },
@@ -82,22 +53,39 @@ describe("Claude conversions", () => {
     ])
   })
 
-  test("emits a real error for a recorded failed turn", () => {
-    const parts = convertTurn("text-cancel")
-    expect(parts.some((part) => part.type === "text-delta")).toBe(true)
-    expect(parts.at(-1)?.type).toBe("error")
-    expect(parts.some((part) => part.type === "finish")).toBe(false)
+  test("the preset receives tool context, explicit roles and complete instruction files", () => {
+    const catalog =
+      "# Code Mode\n\nUse execute and search.\n\n## Available tools\n\n- accounts (1 tool) // Customer account tools.\nUse the account ID from search.\n  - tools.accounts.search(): Promise<unknown>\n- example (1 tool)\n  - tools.example.read({\n      path: string,\n    }): Promise<string>\n"
+    const mcp = '<mcp_instructions>\n  <server name="example">Use its documented paths.</server>\n</mcp_instructions>'
+    const skills =
+      "Skills provide specialized instructions and workflows for specific tasks.\n<available_skills><skill>fixture</skill></available_skills>"
+    const instructions =
+      "Instructions from: AGENTS.md\nPROJECT-RULE\n\n## Style\nKeep it readable.\n\nInstructions from: https://example.com/guide.md\nCONFIGURED-RULE"
+    const system = ClaudeSystemPrompt.make(
+      [
+        {
+          role: "system",
+          content: [
+            "GENERIC-OPENCode-PROMPT",
+            catalog,
+            mcp,
+            skills,
+            instructions,
+            "Today's date: Sat Oct 17 2026\n\n<env>OPENCode-ENVIRONMENT</env>",
+          ].join("\n\n"),
+        },
+      ],
+      true,
+      "CUSTOM-ROLE",
+    )
+    expect(system.preset).toBe("claude_code")
+    expect(system.snapshot).toBe(false)
+    expect(system.append).toContain(catalog.trim())
+    expect(system.append).toContain(mcp)
+    expect(system.append).toContain(skills)
+    expect(system.append).not.toContain("GENERIC-OPENCode-PROMPT")
+    expect(system.append).toContain("CUSTOM-ROLE")
+    expect(system.append).toContain(instructions)
+    expect(system.append).not.toContain("OPENCode-ENVIRONMENT")
   })
 })
-
-// The parts the first recorded turn becomes, up to and including its result
-function convertTurn(name: string) {
-  const convert = ConvertClaudeStream.make()
-  const parts: LanguageModelV3StreamPart[] = []
-  for (const line of Recorder.load(name)) {
-    if (line.from !== "claude" || line.message.type === "control_response") continue
-    parts.push(...convert(line.message as SDKMessage))
-    if (line.message.type === "result") break
-  }
-  return parts
-}

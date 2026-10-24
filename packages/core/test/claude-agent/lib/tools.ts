@@ -6,18 +6,11 @@ import type {
   LanguageModelV3StreamPart,
   LanguageModelV3ToolResultPart,
 } from "@ai-sdk/provider"
+import type { SessionRequestKind } from "@opencode/plugin/effect/session"
 import { Effect } from "effect"
 import type { ClaudeAgentLanguageModel } from "@opencode/core/claude-agent/language-model/claude-agent-language-model"
 import { RequestKind } from "@opencode/core/claude-agent/language-model/request-kind"
 import { TestSessions } from "./sessions"
-import type { ClaudeIO } from "@opencode/core/claude-agent/claude/io"
-import { ClaudeSession } from "@opencode/core/claude-agent/claude/session"
-import { ClaudeQueryOptions } from "@opencode/core/claude-agent/claude/query-options"
-import { ClaudeSystemPrompt } from "@opencode/core/claude-agent/language-model/system-prompt"
-import { ConvertToClaudeMessage } from "@opencode/core/claude-agent/language-model/convert-to-claude-message"
-import { PendingTools } from "@opencode/core/claude-agent/tools/pending"
-import { ToolHooks } from "@opencode/core/claude-agent/tools/hooks"
-import { ToolServer } from "@opencode/core/claude-agent/tools/server"
 
 export const tools: LanguageModelV3FunctionTool[] = [
   {
@@ -49,46 +42,11 @@ export const prompt = () =>
     "Call lookup twice in a single response, once with key a and once with key b. After both results, call confirm with those two markers. Then reply only with the final marker returned by confirm.",
   )
 
-// Observe the real MCP handler, rather than assuming an emitted tool call has already reached it.
-export const park = Effect.fn(function* (io: ClaudeIO.Interface, directory: string) {
-  const pending = PendingTools.make()
-  const entered = Promise.withResolvers<void>()
-  const settled = Promise.withResolvers<void>()
-  const session = yield* Effect.promise(() =>
-    ClaudeSession.start({
-      ...ClaudeQueryOptions.base({ executable: io.which()!, io }),
-      cwd: directory,
-      model: "haiku",
-      sessionId: crypto.randomUUID(),
-      includePartialMessages: true,
-      systemPrompt: ClaudeSystemPrompt.make(prompt(), true),
-      hooks: ToolHooks.make(pending),
-      mcpServers: {
-        opencode: ToolServer.make(tools, {
-          ...pending,
-          async call(name) {
-            const result = pending.call(name)
-            entered.resolve()
-            return result.finally(() => settled.resolve())
-          },
-        }),
-      },
-    }),
-  )
-  yield* Effect.addFinalizer(() => Effect.promise(() => session.stop().finally(() => pending.clear())))
-  yield* Effect.promise(() => session.ready)
-  session.begin(ConvertToClaudeMessage.content(prompt()))
-  const boundary = yield* Effect.promise(() => session.readStep(() => {}))
-  if (boundary !== "tools") throw new Error("Expected a tool step")
-  yield* Effect.promise(() => entered.promise)
-  return { session, pending, settled: settled.promise }
-})
-
 export const step = Effect.fn(function* (
   model: ClaudeAgentLanguageModel.Model,
   prompt: LanguageModelV3Prompt,
   offered = tools,
-  kind: RequestKind.Kind = "primary",
+  kind: SessionRequestKind = "primary",
 ) {
   const result = yield* Effect.promise(() =>
     model.doStream({

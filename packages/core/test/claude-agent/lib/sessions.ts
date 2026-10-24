@@ -1,9 +1,8 @@
 export * as TestSessions from "./sessions"
 
 import type { LanguageModelV3Prompt, LanguageModelV3StreamPart } from "@ai-sdk/provider"
-import type { SDKUserMessage } from "@anthropic-ai/claude-agent-sdk"
+import type { SessionRequestKind } from "@opencode/plugin/effect/session"
 import { Effect } from "effect"
-import type { ClaudeSession } from "@opencode/core/claude-agent/claude/session"
 import { ClaudeSessions } from "@opencode/core/claude-agent/claude/sessions"
 import { ClaudeStatus } from "@opencode/core/claude-agent/claude/status"
 import { ClaudeAgentLanguageModel } from "@opencode/core/claude-agent/language-model/claude-agent-language-model"
@@ -14,15 +13,12 @@ import { FakeIO } from "./fake-io"
 
 export function storage() {
   const data = new Map<string, unknown>()
-  const ids = new Set<string>()
   return {
     data,
-    ids,
     get: (key: string) => Effect.sync(() => data.get(key)),
     set: (key: string, value: SessionRecord.Record) =>
       Effect.sync(() => {
         data.set(key, value)
-        ids.add(value.claudeSessionID)
       }),
   }
 }
@@ -58,20 +54,11 @@ export const start = Effect.fn(function* (claude: FakeClaude.Fake, saved = stora
   return { registry, input, model: yield* model(sessions), storage: saved }
 })
 
-// Direct SDK experiments supply their own tool handlers and read through every step to the result.
-export async function send(session: ClaudeSession.Interface, content: SDKUserMessage["message"]["content"]) {
-  session.begin(content)
-  for (;;) {
-    const result = await session.readStep(() => {})
-    if (result !== "tools") return result
-  }
-}
-
 export function stream(
   model: ClaudeAgentLanguageModel.Model,
   prompt: LanguageModelV3Prompt,
   sessionID = "session-a",
-  kind: RequestKind.Kind = "primary",
+  kind: SessionRequestKind = "primary",
 ) {
   return Effect.promise(() =>
     model.doStream({ prompt, headers: { [RequestKind.SESSION_HEADER]: sessionID, [RequestKind.HEADER]: kind } }),
@@ -95,7 +82,7 @@ export const reply = Effect.fn(function* (
   model: ClaudeAgentLanguageModel.Model,
   prompt: LanguageModelV3Prompt,
   sessionID = "session-a",
-  kind: RequestKind.Kind = "primary",
+  kind: SessionRequestKind = "primary",
 ) {
   const result = yield* stream(model, prompt, sessionID, kind)
   return yield* Effect.tryPromise(() => collect(result.stream))

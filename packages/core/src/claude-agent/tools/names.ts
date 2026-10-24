@@ -20,8 +20,8 @@ export function original(name: string, tools: readonly LanguageModelV3FunctionTo
 
 export function description(tool: LanguageModelV3FunctionTool) {
   const text = tool.description ?? ""
-  if ((tool.name !== "subagent" && tool.name !== "task") || text.length <= 2048) return text.slice(0, 2048)
-  const agents = /(?:Available (?:sub)?agents|Currently available agent types):/i.exec(text)
-  if (!agents) return text.slice(0, 2048)
-  return (text.slice(agents.index) + "\n\n" + text.slice(0, agents.index)).slice(0, 2048)
+  if (tool.name !== "subagent" || text.length <= 2048) return text.slice(0, 2048)
+  const agents = text.indexOf("Available subagents:")
+  if (agents === -1) return text.slice(0, 2048)
+  return (text.slice(agents) + "\n\n" + text.slice(0, agents)).slice(0, 2048)
 }
