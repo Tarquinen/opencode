@@ -7,6 +7,7 @@ import type {
   LanguageModelV3ToolResultPart,
 } from "@ai-sdk/provider"
 import type { CallToolResult } from "@modelcontextprotocol/server"
+import { Provider } from "@opencode/schema/provider"
 import { ConvertToClaudeMessage } from "../language-model/convert-to-claude-message.js"
 import { Fingerprint } from "../sync/fingerprint.js"
 
@@ -44,6 +45,7 @@ export function convert(
           continue
         }
         if (part.type === "image-url") {
+          // Only picks an image block. URL images are sent without a media type.
           parts.push({ type: "file", mediaType: "image/png", data: new URL(part.url) })
           continue
         }
@@ -97,7 +99,7 @@ export function collect(prompt: LanguageModelV3Prompt, start: number) {
     // OpenCode puts the group's media in a following user message; attach it to the group's last result.
     for (let i = 0; i < tools.length; i++) {
       const tool = tools[i]!
-      const flags = tool.providerOptions?.["claude-agent"]
+      const flags = tool.providerOptions?.[Provider.ID.claudeAgent]
       if (flags?.toolAborted === true) aborted = true
       const isLast = i === tools.length - 1
       results.set(tool.toolCallId, convert(tool.output, isLast ? files : [], flags?.toolError === true))

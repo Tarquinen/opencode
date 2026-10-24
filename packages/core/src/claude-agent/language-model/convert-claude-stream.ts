@@ -2,18 +2,19 @@ export * as ConvertClaudeStream from "./convert-claude-stream.js"
 
 import type { LanguageModelV3FunctionTool, LanguageModelV3StreamPart } from "@ai-sdk/provider"
 import type { SDKMessage } from "@anthropic-ai/claude-agent-sdk"
+import { Provider } from "@opencode/schema/provider"
 import { ClaudeUsage } from "./usage.js"
 import { ToolNames } from "../tools/names.js"
 import { ClaudeAgentError } from "./claude-agent-error.js"
 
-export function make(tools: readonly LanguageModelV3FunctionTool[] = []) {
+export function make(tools: readonly LanguageModelV3FunctionTool[]) {
   const usage = ClaudeUsage.make()
   const failure = ClaudeAgentError.make()
   const streamed = new Set<string>()
   const blocks = new Map<number, "text" | "reasoning">()
   let messageID = ""
   let calledTools = false
-  let metadata: { "claude-agent": { sessionID: string; messageID: string } } | undefined
+  let metadata: Record<string, { sessionID: string; messageID: string }> | undefined
 
   return (message: SDKMessage): LanguageModelV3StreamPart[] => {
     const parts: LanguageModelV3StreamPart[] = []
@@ -82,7 +83,7 @@ export function make(tools: readonly LanguageModelV3FunctionTool[] = []) {
       // Synthetic API errors are diagnostics, not assistant answers.
       if (message.error) return parts
       // Stream events carry API message IDs; only the complete assistant message carries the transcript UUID.
-      metadata = { "claude-agent": { sessionID: message.session_id, messageID: message.uuid } }
+      metadata = { [Provider.ID.claudeAgent]: { sessionID: message.session_id, messageID: message.uuid } }
       usage.update(message.message.id, message.message.usage)
       for (const block of message.message.content) {
         if (block.type !== "tool_use") continue

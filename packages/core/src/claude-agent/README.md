@@ -194,7 +194,7 @@ A `context` hook that changes earlier messages makes the plugin branch Claude be
 ## Limitations
 
 - No workerd, Durable Objects or workspaces.
-- No custom base URLs or request headers, and no temperature, top-p, top-k, penalties, seed or stop sequences.
+- Base URLs and request headers come only from provider config, not per request. No temperature, top-p, top-k, penalties, seed or stop sequences.
 - Turns from other models arrive as a catch-up, not as Claude's own memory.
 - Chat follows Claude Code's base instructions, not opencode's built-in agent prompts.
 - Every side call and parallel subagent is a `claude` process, and uses plan limits.
@@ -266,7 +266,7 @@ const claude = FakeClaude.make([
 
 - Each step checks the kind of SDK input and replays recorded replies up to the next input.
 - The fake keeps everything the SDK sent (flags, environment, start-up request, user messages), so tests check both directions.
-- A test fails on an unfinished step or unexpected input. Tests wait on steps (`claude.started`, `claude.reached`), never on time.
+- A test fails on an unfinished step or unexpected input. Tests under `test/claude-agent` wait on steps (`claude.started`, `claude.reached`), never on time.
 - `forkSession` and `deleteSession` work on session files directly, so `ClaudeIO` exposes them separately and `test/claude-agent/lib/fake-io.ts` fakes them in memory.
 
 The wire format between the SDK and `claude` is internal and undocumented; recordings are how we notice it changing.
