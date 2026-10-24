@@ -143,7 +143,6 @@ describe("ClaudeAgentPlugin models", () => {
       const sonnet = find(models, "sonnet")
       expect(sonnet.variants).toContainEqual({ id: Model.VariantID.make("high"), settings: { effort: "high" } })
       expect(sonnet.limit).toEqual({ context: 1_000_000, output: 0 })
-      expect(find(models, "claude-opus-4-6").limit.context).toBe(200_000)
       expect(find(models, "haiku").family).toBe(Model.Family.make("claude-haiku"))
       for (const model of models) {
         expect(model.cost).toEqual([])

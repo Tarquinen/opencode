@@ -1,6 +1,7 @@
 export * as TestTools from "./tools"
 
 import type {
+  LanguageModelV3CallOptions,
   LanguageModelV3FunctionTool,
   LanguageModelV3Prompt,
   LanguageModelV3StreamPart,
@@ -47,12 +48,14 @@ export const step = Effect.fn(function* (
   prompt: LanguageModelV3Prompt,
   offered = tools,
   kind: SessionRequestKind = "primary",
+  providerOptions?: LanguageModelV3CallOptions["providerOptions"],
 ) {
   const result = yield* Effect.promise(() =>
     model.doStream({
       prompt,
       tools: offered,
       headers: { [RequestKind.SESSION_HEADER]: "session-a", [RequestKind.HEADER]: kind },
+      providerOptions,
     }),
   )
   const parts = yield* Effect.tryPromise(() => TestSessions.collect(result.stream))
