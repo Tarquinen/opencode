@@ -273,7 +273,7 @@ The wire format between the SDK and `claude` is internal and undocumented; recor
 
 ### Recordings
 
-`test/claude-agent/fixtures/recordings/` holds real `claude` traffic in both directions, one complete process per file. The first line holds the Claude Code version, SDK version and date. Home paths, account email and organization are replaced. The appended system prompt keeps only OpenCode's fixed text, not the recording machine's skills, Code Mode catalog or instruction files. Recordings never hold thinking, signatures or redacted thinking; `recorder.test.ts` checks the last part.
+`test/claude-agent/fixtures/recordings/` holds real `claude` traffic in both directions, one complete process per file. The first line holds the Claude Code version, SDK version and date. Home paths, account email and organization are replaced. The appended system prompt keeps only OpenCode's fixed text, not the recording machine's skills, Code Mode catalog or instruction files. Startup replies leave out Claude's command list and context grid, which nothing reads. Recordings never hold thinking, signatures or redacted thinking; `recorder.test.ts` checks the last part.
 
 Recording is not scripted yet. On a Claude Code or SDK upgrade: update the pinned SDK, capture new recordings, review `git diff` on them, then fix the fake or our code.
 

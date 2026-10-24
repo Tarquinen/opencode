@@ -252,16 +252,14 @@ describe("ClaudeAgentPlugin connection", () => {
 })
 
 describe("ClaudeAgentPlugin session hooks", () => {
-  const hookEvent = Effect.fn(function* (sessionID: Session.ID, agent = "build") {
-    return {
-      sessionID,
-      agent: Agent.ID.make(agent),
-      model: haiku,
-      system: [],
-      messages: [] as Message[],
-      options: { maxTokens: 32_000 } as Record<string, unknown>,
-      tools: {},
-    }
+  const hookEvent = (sessionID: Session.ID, agent = "build") => ({
+    sessionID,
+    agent: Agent.ID.make(agent),
+    model: haiku,
+    system: [],
+    messages: [] as Message[],
+    options: { maxTokens: 32_000 } as Record<string, unknown>,
+    tools: {},
   })
 
   const newSession = Effect.gen(function* () {
@@ -276,6 +274,7 @@ describe("ClaudeAgentPlugin session hooks", () => {
       editor.update(Agent.ID.make("reviewer"), (info) => {
         info.system = "You review code."
       })
+      // The test layer has no built-in agents, so add a build agent without a system prompt.
       editor.update(Agent.ID.make("build"), () => {})
     })
   })
@@ -313,7 +312,7 @@ describe("ClaudeAgentPlugin session hooks", () => {
       yield* addAgents
       const hooks = yield* PluginHooks.Service
       const session = yield* newSession
-      const event = yield* hookEvent(session.id)
+      const event = hookEvent(session.id)
       event.messages = [
         Message.tool({ id: "call-1", name: "bash", result: { error: { type: "aborted" } }, resultType: "error" }),
         Message.tool({ id: "call-2", name: "bash", result: "exit 1", resultType: "error" }),
@@ -333,7 +332,7 @@ describe("ClaudeAgentPlugin session hooks", () => {
       ])
 
       // Compaction keeps OpenCode's summary budget.
-      const compaction = yield* hooks.trigger("session", "compaction", yield* hookEvent(session.id))
+      const compaction = yield* hooks.trigger("session", "compaction", hookEvent(session.id))
       expect(compaction.options.maxTokens).toBe(32_000)
     }),
   )
@@ -345,9 +344,9 @@ describe("ClaudeAgentPlugin session hooks", () => {
       const hooks = yield* PluginHooks.Service
       const session = yield* newSession
       for (const kind of ["context", "generate", "compaction"] as const) {
-        const reviewer = yield* hooks.trigger("session", kind, yield* hookEvent(session.id, "reviewer"))
+        const reviewer = yield* hooks.trigger("session", kind, hookEvent(session.id, "reviewer"))
         expect(reviewer.options[ClaudeSystemPrompt.AGENT_OPTION]).toBe("You review code.")
-        const build = yield* hooks.trigger("session", kind, yield* hookEvent(session.id, "build"))
+        const build = yield* hooks.trigger("session", kind, hookEvent(session.id, "build"))
         expect(build.options[ClaudeSystemPrompt.AGENT_OPTION]).toBe("")
       }
     }),
