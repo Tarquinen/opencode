@@ -96,6 +96,7 @@ Users can configure the `claude-agent` provider and its models in opencode confi
 - Claude cannot load history it did not write. When a user switches to Claude, everything Claude has not seen is sent as one user message, wrapped in `<conversation-checkpoint>`, without thinking text.
 - When a user switches back to Claude later, only the part it missed is sent.
 - After an edit or undo, the plugin copies Claude's session up to the last point where both histories match and continues from there. If nothing matches, Claude starts fresh with the whole history.
+- Plugins that change the message history through the `context` hook work too. Claude gets the changed history the same way as after an edit or undo.
 
 ## Running Claude
 
@@ -135,15 +136,24 @@ Users can configure the `claude-agent` provider and its models in opencode confi
 
 ## Limitations
 
+opencode features that do not work, or work differently, with Claude Agent models.
+
 - `claude` must be installed and signed in on the same machine. It does not work in hosted opencode or remote workspaces.
-- Claude Code's built-in tools, skills, CLAUDE.md files, hooks, MCP servers, memory and slash commands are not available. opencode's versions are used instead.
-- Claude Code's own web search and web fetch are not available. Claude uses opencode's `websearch` and `webfetch` tools, which depend on the user's opencode setup.
 - Chats follow Claude Code's base prompt, not opencode's built-in agent prompts. Custom agent prompts still apply.
 - Temperature, top-p, top-k, penalties, seed and stop sequences are not supported.
-- Base URLs and headers come only from config. Plugins cannot change them per request.
-- History from other models reaches Claude as a catch-up message, not as Claude's own memory.
-- Every side call and subagent runs its own `claude` process and uses plan limits.
-- Cost shows as $0. Plan usage is only visible when a limit is reached.
-- Recovery after a crash in the middle of a turn is limited. Picking up between turns works.
+- Base URLs and headers come only from config. Plugins cannot change them per request (for now), and the `http.request` and `http.response` hooks never run, because Claude Code makes the API calls.
+
+## Claude Code Features Not Supported
+
+Claude Code features that opencode has no version of.
+
+- Claude plan usage: `/usage`, the options shown at a limit, auto-continue when a limit resets, and buying extra usage. opencode's `/usage` shows OpenCode Console usage instead.
+- Cloud features: cloud sessions and `/teleport`, scheduled tasks and `/autofix-pr`.
+- Agent teams and messaging between sessions.
+- `/loop` and `/goal`.
+- Auto mode, where a classifier approves permissions, and ultracode.
+- Auto memory and away summaries (see [Turned Off](#turned-off)).
+- Computer use, sandboxed Bash and notebook editing.
+- Bundled skills such as `/simplify`, `/verify` and `/insights`.
 
 ## Open Questions
