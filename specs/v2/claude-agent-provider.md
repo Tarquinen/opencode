@@ -4,7 +4,7 @@
 
 The Claude Agent provider lets people use Claude models in opencode with their own Claude Code login. opencode runs the user's installed `claude` program through Anthropic's Claude Agent SDK.
 
-Claude does the thinking. opencode runs the tools, keeps the history and shows the session like it would for any other model.
+The idea is that all of opencode UX stays the same, and claude code becomes just another provider. We do not try to inherit settings a user migrating from claude code may have set because we want to allow them to experience default opencode UX, and we do our best to make the transition smooth.
 
 ## Name and Login
 
@@ -37,6 +37,7 @@ The provider is called "Claude Agent", with the ID `claude-agent`. The SDK's [br
 - Why: the history looks the same whichever model wrote it, so switching between Claude and other models works. There is also only one permission system.
 - If opencode's tools cannot be given to Claude, the request fails. It never falls back to Claude Code's tools.
 - When the list of tools changes, the Claude process restarts, because the SDK cannot swap tools while running. Reaching the step limit works the same way: Claude restarts with no tools.
+- Claude Code's plan mode is not used. opencode's Plan agent works as it does for other models, through its permissions and reminder messages.
 
 ## Claude Code Settings
 
@@ -44,23 +45,27 @@ Claude Code reads none of the user's Claude settings. The plugin passes every se
 
 ### Turned Off
 
-opencode has its own version of each of these:
-
-- Settings files in `~/.claude` and the project's `.claude` folder
-- CLAUDE.md files, hooks, MCP servers, skills and built-in tools
-- Auto memory, auto compaction, away summaries, tool search and the advisor tool
+- Settings files in `~/.claude` and the project's `.claude` folder, CLAUDE.md files, hooks, MCP servers and skills. opencode has its own versions of these.
+- Built-in tools. Claude uses opencode's tools instead.
+- Auto compaction. opencode compacts instead.
+- Auto memory. Claude saves notes about the user and project to its own files and reads them in later sessions. Only Claude models would see them, and opencode could not show or control them.
+- Away summaries. Claude Code writes a recap when you come back to an idle terminal session. Opencode does not do this. 
+- Tool search. Claude Code hides MCP tools until Claude searches for them. All of opencode's tools reach Claude as MCP tools, so this would hide every one of them. Opencode also has native tool deferral through codemode for normal MCPs.
+- The advisor tool. Claude can ask a stronger model for advice in the middle of a task, using the user's plan. opencode could not show or control these calls.
 
 We also clear two variables a user might have set in their shell. `CLAUDE_CODE_SIMPLE` would skip the subscription login. `CLAUDE_CODE_EFFORT_LEVEL` would override the effort chosen in opencode.
 
 ### Set by opencode
 
-- Which `claude` to run, and the session's folder
-- The model and effort chosen in opencode. These change without a restart.
+- The path to `claude` (`OPENCODE_CLAUDE_PATH`, or `claude` on `PATH`), and the session's folder
+- The model and effort chosen in opencode.
 - The system prompt described above
 - opencode's tools, as the only tools Claude may use. Anything else is refused without asking.
-- Two hooks: one matches each Claude tool call to opencode's tool call, and one gives Claude the images and PDFs from opencode's tool results
+- Two hooks that Claude Code runs around each tool call:
+  - Before the call: gives us Claude's ID for the call. Our tool handler can't see this ID, and opencode needs it to send back the right result. Because we only remember one ID at a time, tools must run one at a time, so we never mark them as safe to run in parallel.
+  - After the call: adds PDFs and linked images from opencode's result, which a normal MCP tool result can't carry.
 - Thinking with summaries, so opencode has reasoning text to show
-- Messages sent exactly as typed, so Claude does not treat `/commands` or `@file` specially. This needs Claude Code 2.1.248 or later.
+- Messages sent exactly as given. opencode already expands `/commands` and adds `@file` contents before sending, so Claude Code does not process them again. It also skips the context Claude Code normally adds at the start of each turn, such as nested CLAUDE.md files, skill lists and reminders. This needs Claude Code 2.1.248 or later.
 - A higher limit on tool output, so opencode's own truncation applies instead
 - Saved Claude sessions for chats, but not for side calls such as titles
 
@@ -91,23 +96,22 @@ Users can configure the `claude-agent` provider and its models in opencode confi
 - Claude cannot load history it did not write. When a user switches to Claude, everything Claude has not seen is sent as one user message, wrapped in `<conversation-checkpoint>`, without thinking text.
 - When a user switches back to Claude later, only the part it missed is sent.
 - After an edit or undo, the plugin copies Claude's session up to the last point where both histories match and continues from there. If nothing matches, Claude starts fresh with the whole history.
-- When a user undoes and sends the same message again, the copy leaves out that last message. Keeping it caused `400 This model does not support assistant message prefill`.
-- Unexpected copy errors are shown to the user. We only start fresh when history is actually missing.
 
 ## Running Claude
 
 ### Processes
 
 - Each session has one long-running `claude` process. It stops after 5 minutes idle, and the next message picks up the saved Claude session.
+- Why: the SDK starts one process per conversation and cannot share a process between sessions. Claude Code in a terminal works the same way.
 - The process restarts when the system prompt, tools, connection settings or output limit change.
 
 ### Errors and Usage
 
 - Claude Code retries failed requests itself, so opencode does not retry for this provider. Errors such as reaching a plan limit show once.
 - Cost shows as $0 because usage is covered by the subscription.
-- Claude reports token usage for a message several times. We keep the highest count instead of adding them up, so opencode does not compact too early.
+- Claude Code reports usage for one model response several times while it streams, and again as a total for the turn. Adding these up would count the same response several times and make opencode compact too early. We keep the highest count for each response, and use the last response's input as the context size.
 - Each model's context size comes from Claude. Without it, opencode's 200k default applies.
-- The model list is checked on `/connect` and saved. Startup only checks Claude when no list has been saved yet.
+- The model list is refreshed whenever Claude reports it: on `/connect`, when the login changes, and each time a new Claude process starts. It is saved so opencode can show models at startup without running `claude`.
 
 ### Titles, Summaries and Compaction
 
@@ -119,6 +123,7 @@ Users can configure the `claude-agent` provider and its models in opencode confi
 
 - The provider is built into core, not shipped as a separate package. A separate package meant extra publishing work and a circular test dependency.
 - The SDK is an optional dependency. It only loads when first used, so it does not slow down startup.
+- Installing the SDK also downloads its own copy of `claude` (about 270 MB unpacked). We never run it. It is cached locally and on Linux and macOS CI, but Windows CI downloads it on every run. The opencode binary only includes the SDK's code.
 - The provider is skipped where opencode cannot start local programs, such as hosted opencode and remote workspaces. A stub lets hosted builds work without the SDK.
 - It is registered before opencode's fallback for unknown providers (issue #42788).
 - There are no plugin options. `OPENCODE_CLAUDE_PATH` picks which `claude` to run.
@@ -132,6 +137,7 @@ Users can configure the `claude-agent` provider and its models in opencode confi
 
 - `claude` must be installed and signed in on the same machine. It does not work in hosted opencode or remote workspaces.
 - Claude Code's built-in tools, skills, CLAUDE.md files, hooks, MCP servers, memory and slash commands are not available. opencode's versions are used instead.
+- Claude Code's own web search and web fetch are not available. Claude uses opencode's `websearch` and `webfetch` tools, which depend on the user's opencode setup.
 - Chats follow Claude Code's base prompt, not opencode's built-in agent prompts. Custom agent prompts still apply.
 - Temperature, top-p, top-k, penalties, seed and stop sequences are not supported.
 - Base URLs and headers come only from config. Plugins cannot change them per request.
