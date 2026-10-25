@@ -152,8 +152,18 @@ Claude Code features that opencode has no version of.
 - Agent teams and messaging between sessions.
 - `/loop` and `/goal`.
 - Auto mode, where a classifier approves permissions, and ultracode.
-- Auto memory and away summaries (see [Turned Off](#turned-off)).
+- Auto memory and away summaries aka recaps (see [Turned Off](#turned-off)).
 - Computer use, sandboxed Bash and notebook editing.
 - Bundled skills such as `/simplify`, `/verify` and `/insights`.
 
-## Open Questions
+## Open Questions and Concerns
+- Can we call this "claude code" instead of "claude agent"? It's not allowed per
+the anthropic docs, but everyone else does it.
+- I think the biggest issues for claude code users will be the missing features
+  above. Maybe some features like auto mode and memory should be able to be
+enabled behind env vars?
+- Similar to above, is providing UX most similar to default opencode the way to
+  go? Or maybe we should make it more similar to the claude code they're coming
+  from?
+- There are some reports online that claude -p and sdk users get less usage out
+  of their claude subs than normal claude code. This is not documented or verified.
