@@ -109,10 +109,15 @@ Users can configure the `claude-agent` provider and its models in opencode confi
 ### Errors and Usage
 
 - Claude Code retries failed requests itself, so opencode does not retry for this provider. Errors such as reaching a plan limit show once.
-- Cost shows as $0 because usage is covered by the subscription.
+- Cost depends on the login Claude reports. A subscription shows $0 because it covers usage. An API key or a cloud account shows the models.dev price of the model Claude resolves, such as `claude-opus-5-5` for `opus`:
+  - API key, Claude Platform on AWS or Google Cloud, and Bedrock's Mantle endpoint: Anthropic's prices.
+  - Bedrock: Bedrock's prices, which are 10% higher for regional models like `us.anthropic.claude-opus-5-5`.
+  - Vertex and Foundry: Google Vertex's and Azure's prices.
+- A custom base URL, set in opencode or in the shell, shows $0, since a gateway or proxy bills in its own way. So does Claude's enterprise gateway login.
+- Why not Claude's own cost: it is a running total for the turn, so it cannot be split per response.
 - Claude Code reports usage for one model response several times while it streams, and again as a total for the turn. Adding these up would count the same response several times and make opencode compact too early. We keep the highest count for each response, and use the last response's input as the context size.
 - Each model's context size comes from Claude. Without it, opencode's 200k default applies.
-- The model list is refreshed whenever Claude reports it: on `/connect`, when the login changes, and each time a new Claude process starts. It is saved so opencode can show models at startup without running `claude`.
+- The model list is refreshed whenever Claude reports it: on `/connect`, when the login changes, and each time a new Claude process starts. It is saved, with where the login's prices come from, so opencode can show models and costs at startup without running `claude`.
 
 ### Titles, Summaries and Compaction
 

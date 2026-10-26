@@ -1,5 +1,6 @@
 import { Message, SystemPart } from "@opencode/ai/effect"
 import type { LanguageModelV3 } from "@ai-sdk/provider"
+import type { AccountInfo } from "@anthropic-ai/claude-agent-sdk"
 import { AISDK } from "@opencode/core/aisdk"
 import { Agent } from "@opencode/core/agent"
 import { Bus } from "@opencode/core/bus"
@@ -17,6 +18,7 @@ import { Integration } from "@opencode/core/integration"
 import { KV } from "@opencode/core/kv"
 import { Location } from "@opencode/core/location"
 import { Model } from "@opencode/core/model"
+import { Money } from "@opencode/schema/money"
 import { Plugin } from "@opencode/core/plugin"
 import { PluginHooks } from "@opencode/core/plugin/hooks"
 import { PluginHost } from "@opencode/core/plugin/host"
@@ -98,6 +100,38 @@ function find(models: readonly Model.Info[], id: string) {
   return model
 }
 
+const price = [
+  {
+    input: Money.USDPerMillionTokens.make(3),
+    output: Money.USDPerMillionTokens.make(15),
+    cache: { read: Money.USDPerMillionTokens.make(0.3), write: Money.USDPerMillionTokens.make(3.75) },
+  },
+]
+
+const apiKey: AccountInfo = { apiKeySource: "ANTHROPIC_API_KEY", apiProvider: "firstParty" }
+
+// Stands in for models.dev, which lists prices before the plugin runs
+const listPrice = Effect.fn(function* (providerID: Provider.ID, modelID: string) {
+  const providers = yield* Provider.Service
+  yield* providers.transform((editor) => {
+    editor.add({
+      info: Provider.Info.empty(providerID),
+      models: [{ ...Model.Info.default(providerID, Model.ID.make(modelID)), cost: price }],
+    })
+  })
+})
+
+const sonnetCost = Effect.fn(function* (account: AccountInfo, env?: Record<string, string>) {
+  const onConnect = FakeClaude.expectStartup({ account })
+  const claude = FakeClaude.make([onConnect])
+  yield* addPlugin(FakeIO.make({ claude, env }))
+  yield* connect
+  yield* Effect.promise(() => claude.reached(onConnect))
+  const models = yield* eventually(claudeModels, (models) => models.length > 0)
+  claude.check()
+  return find(models, "sonnet").cost
+})
+
 describe("ClaudeAgentPlugin", () => {
   it.effect("runs before the dynamic provider plugin, which would load an npm package instead", () =>
     Effect.sync(() => {
@@ -149,23 +183,56 @@ describe("ClaudeAgentPlugin models", () => {
         expect(model.capabilities.input).toEqual(["text", "image", "pdf"])
       }
       const store = yield* storage
-      const saved = yield* store.get("models")
-      expect(Array.isArray(saved) ? saved.length : 0).toBe(models.length)
+      expect(yield* store.get("models")).toHaveProperty("models.length", models.length)
       claude.check()
     }),
   )
 
-  it.live("starts with the saved list without running claude", () =>
+  it.live("starts with the saved list and its prices without running claude", () =>
     Effect.gen(function* () {
       const store = yield* storage
-      yield* store.set("models", [{ id: "opus", name: "Opus", efforts: ["high"], contextWindow: 1_000_000 }])
+      const opus = "us.anthropic.claude-opus-4-6-v1[1m]"
+      yield* store.set("models", {
+        priceSource: "amazon-bedrock",
+        models: [{ id: opus, name: "Opus", efforts: ["high"], contextWindow: 1_000_000, resolvedModel: opus }],
+      })
+      yield* listPrice(Provider.ID.amazonBedrock, "us.anthropic.claude-opus-4-6-v1")
       yield* connect
       const claude = FakeClaude.make([])
       yield* addPlugin(FakeIO.make({ claude }))
       const models = yield* claudeModels
-      expect(models.map((model) => String(model.id))).toEqual(["opus"])
-      expect(find(models, "opus").limit.context).toBe(1_000_000)
+      expect(models.map((model) => String(model.id))).toEqual([opus])
+      expect(find(models, opus).limit.context).toBe(1_000_000)
+      expect(find(models, opus).cost).toEqual(price)
       expect(claude.runs).toHaveLength(0)
+    }),
+  )
+
+  it.live("shows no cost for a subscription", () =>
+    Effect.gen(function* () {
+      yield* listPrice(Provider.ID.anthropic, "claude-sonnet-5-5")
+      expect(yield* sonnetCost({ subscriptionType: "Claude Team", apiProvider: "firstParty" })).toEqual([])
+    }),
+  )
+
+  it.live("shows Anthropic's prices for an API key login", () =>
+    Effect.gen(function* () {
+      yield* listPrice(Provider.ID.anthropic, "claude-sonnet-5-5")
+      expect(yield* sonnetCost(apiKey)).toEqual(price)
+    }),
+  )
+
+  it.live("shows no cost through a custom base URL, which bills in its own way", () =>
+    Effect.gen(function* () {
+      yield* listPrice(Provider.ID.anthropic, "claude-sonnet-5-5")
+      expect(yield* sonnetCost(apiKey, { ANTHROPIC_BASE_URL: "https://gateway.example" })).toEqual([])
+    }),
+  )
+
+  it.live("shows a cloud account its cloud's prices", () =>
+    Effect.gen(function* () {
+      yield* listPrice(Provider.ID.googleVertex, "claude-sonnet-5-5@default")
+      expect(yield* sonnetCost({ apiProvider: "vertex" })).toEqual(price)
     }),
   )
 
@@ -186,7 +253,7 @@ describe("ClaudeAgentPlugin models", () => {
   it.live("binds chats to plugin storage, and a chat's startup report keeps saved context sizes", () =>
     Effect.gen(function* () {
       const store = yield* storage
-      yield* store.set("models", [{ id: "haiku", name: "Haiku", efforts: [], contextWindow: 123_456 }])
+      yield* store.set("models", { models: [{ id: "haiku", name: "Haiku", efforts: [], contextWindow: 123_456 }] })
       yield* connect
       const claude = FakeClaude.make([
         FakeClaude.expectStartup(),

@@ -29,7 +29,7 @@ export const make = (io: ClaudeIO.Interface, registry = ClaudeSessions.registry(
 
       const status = yield* ClaudeStatus.make(io, () => ClaudeProvider.connection(ctx))
       const sessions = yield* registry.attach({ io, status, storage: ctx.storage, directory: ctx.location.directory })
-      yield* ClaudeProvider.register(ctx, status)
+      yield* ClaudeProvider.register(ctx, status, io)
       yield* ClaudeIntegration.register(ctx, status)
       yield* ClaudeAISDK.register(ctx, sessions)
       yield* ClaudeSessionHooks.register(ctx)
