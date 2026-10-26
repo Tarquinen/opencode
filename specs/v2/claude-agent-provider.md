@@ -159,13 +159,15 @@ Claude Code features that opencode has no version of.
 ## Open Questions and Concerns
 - Can we call this "claude code" instead of "claude agent"? It's not allowed per
 the anthropic docs, but everyone else does it.
+- Can we reuse cc credentials for usage endpoints? Also not allowed but everyone
+else does it.
 - I think the biggest issues for claude code users will be the features not supported
   above. Maybe some features like auto mode and memory should be able to be
-enabled behind env vars?
+enabled behind env vars? What is the best UX here?
 - Similar to above, is providing UX most similar to default opencode the way to
   go? Or maybe we should make it more similar to the claude code they're coming
   from?
-- The CC dep is big (our second biggest) and will need to be downloaded for CI, yikes
+- The CC dependency is big (our second biggest) and will need to be downloaded for CI, yikes
 - There are some reports online that claude -p and claude sdk users get less usage out
   of their claude subs than normal claude code. This is not documented or verified.
-- Do we need to run anything here by anthropic?
+- Do we need to discuss anything here with anthropic or any kind of approval?
