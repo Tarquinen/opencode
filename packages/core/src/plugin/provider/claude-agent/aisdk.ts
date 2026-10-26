@@ -2,9 +2,9 @@ export * as ClaudeAISDK from "./aisdk.js"
 
 import type { Context } from "@opencode/plugin/effect/plugin"
 import { Effect } from "effect"
-import { ClaudeQueryOptions } from "../claude/query-options.js"
-import type { ClaudeSessions } from "../claude/sessions.js"
-import { ClaudeAgentLanguageModel } from "../language-model/claude-agent-language-model.js"
+import { ClaudeQueryOptions } from "./claude/query-options.js"
+import type { ClaudeSessions } from "./claude/sessions.js"
+import { ClaudeAgentLanguageModel } from "./language-model/claude-agent-language-model.js"
 import { ClaudeProvider } from "./provider.js"
 
 export const register = Effect.fn("ClaudeAISDK.register")(function* (ctx: Context, sessions: ClaudeSessions.Interface) {

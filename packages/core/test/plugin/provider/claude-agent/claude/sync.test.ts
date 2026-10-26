@@ -1,8 +1,8 @@
 import { describe, expect } from "bun:test"
 import type { LanguageModelV3Prompt } from "@ai-sdk/provider"
 import { Effect } from "effect"
-import { SessionRecord } from "@opencode/core/claude-agent/sync/record"
-import { it } from "../../lib/effect"
+import { SessionRecord } from "@opencode/core/plugin/provider/claude-agent/sync/record"
+import { it } from "../../../../lib/effect"
 import { FakeClaude } from "../lib/fake-claude"
 import { TestSessions } from "../lib/sessions"
 

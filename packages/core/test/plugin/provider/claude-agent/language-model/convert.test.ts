@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test"
-import { ConvertToClaudeMessage } from "@opencode/core/claude-agent/language-model/convert-to-claude-message"
-import { ClaudeSystemPrompt } from "@opencode/core/claude-agent/language-model/system-prompt"
+import { ConvertToClaudeMessage } from "@opencode/core/plugin/provider/claude-agent/language-model/convert-to-claude-message"
+import { ClaudeSystemPrompt } from "@opencode/core/plugin/provider/claude-agent/language-model/system-prompt"
 import type { LanguageModelV3Prompt } from "@ai-sdk/provider"
 
 describe("Claude conversions", () => {

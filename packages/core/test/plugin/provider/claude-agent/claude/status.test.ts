@@ -1,8 +1,8 @@
 import { describe, expect } from "bun:test"
 import { Effect, Fiber, SubscriptionRef } from "effect"
-import { ClaudeProbe } from "@opencode/core/claude-agent/claude/probe"
-import { ClaudeStatus } from "@opencode/core/claude-agent/claude/status"
-import { it } from "../../lib/effect"
+import { ClaudeProbe } from "@opencode/core/plugin/provider/claude-agent/claude/probe"
+import { ClaudeStatus } from "@opencode/core/plugin/provider/claude-agent/claude/status"
+import { it } from "../../../../lib/effect"
 import { FakeClaude } from "../lib/fake-claude"
 import { FakeIO } from "../lib/fake-io"
 

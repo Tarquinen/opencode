@@ -45,8 +45,8 @@
       "default": "./src/pty/pty.bun.ts"
     },
     "#claude-agent-sdk": {
-      "workerd": "./src/claude-agent/claude/agent-sdk.workerd.ts",
-      "default": "./src/claude-agent/claude/agent-sdk.ts"
+      "workerd": "./src/plugin/provider/claude-agent/claude/agent-sdk.workerd.ts",
+      "default": "./src/plugin/provider/claude-agent/claude/agent-sdk.ts"
     },
     "#persistent-pty-binary": {
       "workerd": "./src/persistent-pty/binary.workerd.ts",

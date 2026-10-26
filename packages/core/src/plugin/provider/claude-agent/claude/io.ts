@@ -1,7 +1,7 @@
 export * as ClaudeIO from "./io.js"
 
 import type { Options } from "@anthropic-ai/claude-agent-sdk"
-import { which } from "../../util/which.js"
+import { which } from "../../../../util/which.js"
 import { ClaudeFork } from "./fork.js"
 import { ClaudeSDK } from "./sdk.js"
 

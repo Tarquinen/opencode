@@ -2,7 +2,7 @@ export * as ClaudeSessionHooks from "./session.js"
 
 import type { Context } from "@opencode/plugin/effect/plugin"
 import { Effect, Schema } from "effect"
-import { RequestKind } from "../language-model/request-kind.js"
+import { RequestKind } from "./language-model/request-kind.js"
 import { ClaudeProvider } from "./provider.js"
 
 // OpenCode records stopped tools (including a plain permission rejection) with this structured error.

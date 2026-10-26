@@ -3,7 +3,7 @@ export * as ClaudeInstructions from "./instructions.js"
 import type { SystemPart } from "@opencode/ai/effect"
 import type { Context } from "@opencode/plugin/effect/plugin"
 import { Effect, Option, Schema } from "effect"
-import { ClaudeSystemPrompt } from "../language-model/system-prompt.js"
+import { ClaudeSystemPrompt } from "./language-model/system-prompt.js"
 import { ClaudeProvider } from "./provider.js"
 
 const KINDS = ["context", "generate", "compaction"] as const

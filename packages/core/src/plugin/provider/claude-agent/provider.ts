@@ -2,11 +2,11 @@ export * as ClaudeProvider from "./provider.js"
 
 import type { Context } from "@opencode/plugin/effect/plugin"
 import { Effect, Option, Schema, Stream, SubscriptionRef } from "effect"
-import { Model } from "../../model.js"
-import { Provider } from "../../provider.js"
-import type { ClaudeProbe } from "../claude/probe.js"
-import { ClaudeQueryOptions } from "../claude/query-options.js"
-import type { ClaudeStatus } from "../claude/status.js"
+import { Model } from "../../../model.js"
+import { Provider } from "../../../provider.js"
+import type { ClaudeProbe } from "./claude/probe.js"
+import { ClaudeQueryOptions } from "./claude/query-options.js"
+import type { ClaudeStatus } from "./claude/status.js"
 
 export const ID = Provider.ID.claudeAgent
 export const PACKAGE = "@opencode/claude-agent"
