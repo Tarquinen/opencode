@@ -131,13 +131,12 @@ export function expectTurn(input?: {
 
 export function expectInterrupt(input?: {
   readonly recording?: string
-  readonly index?: number
   readonly hold?: Promise<void>
   readonly beforeResult?: Promise<void>
 }): Input {
   return {
     type: "interrupt",
-    replies: recordedInput(input?.recording ?? "text", "interrupt", input?.index ?? 0),
+    replies: recordedInput(input?.recording ?? "text", "interrupt", 0),
     hold: input?.hold,
     beforeResult: input?.beforeResult,
     started: Promise.withResolvers<void>(),

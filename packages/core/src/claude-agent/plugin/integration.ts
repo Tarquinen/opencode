@@ -13,7 +13,7 @@ import { ClaudeProvider } from "./provider.js"
 export const METHOD_ID = "claude-login"
 
 // The login method only records that the user chose Claude Code. The login itself belongs to `claude`, and the plugin
-// never sees a token (README.md, "Ground rules").
+// never sees a token (specs/v2/claude-agent-provider.md, "Login").
 export const register = Effect.fn("ClaudeIntegration.register")(function* (
   ctx: Context,
   status: ClaudeStatus.Interface,

@@ -36,7 +36,7 @@ The provider is called "Claude Agent", with the ID `claude-agent`. The SDK's [br
 - When Claude calls a tool, the plugin holds the call. opencode runs it like any other model's tool call, including permission prompts, then sends the result back to Claude.
 - Why: the history looks the same whichever model wrote it, so switching between Claude and other models works. There is also only one permission system.
 - If opencode's tools cannot be given to Claude, the request fails. It never falls back to Claude Code's tools.
-- When the list of tools changes, the Claude process restarts, because the SDK cannot swap tools while running. Reaching the step limit works the same way: Claude restarts with no tools.
+- When the list of tools changes, the Claude process restarts, because the SDK cannot swap tools while running.
 - Claude Code's plan mode is not used. opencode's Plan agent works as it does for other models, through its permissions and reminder messages.
 
 ## Claude Code Settings
@@ -49,7 +49,7 @@ Claude Code reads none of the user's Claude settings. The plugin passes every se
 - Built-in tools. Claude uses opencode's tools instead.
 - Auto compaction. opencode compacts instead.
 - Auto memory. Claude saves notes about the user and project to its own files and reads them in later sessions. Only Claude models would see them, and opencode could not show or control them.
-- Away summaries. Claude Code writes a recap when you come back to an idle terminal session. Opencode does not do this. 
+- Away summaries. Claude Code writes a recap when you come back to an idle terminal session. Opencode does not do this.
 - Tool search. Claude Code hides MCP tools until Claude searches for them. All of opencode's tools reach Claude as MCP tools, so this would hide every one of them. Opencode also has native tool deferral through codemode for normal MCPs.
 - The advisor tool. Claude can ask a stronger model for advice in the middle of a task, using the user's plan. opencode could not show or control these calls.
 
@@ -156,17 +156,11 @@ Claude Code features that opencode has no version of.
 - Bundled skills such as `/simplify`, `/verify` and `/insights`.
 
 ## Open Questions and Concerns
-- Can we call this "claude code" instead of "claude agent"? It's not allowed per
-the anthropic docs, but everyone else does it.
-- Can we reuse cc credentials for usage endpoints? Also not allowed but everyone
-else does it.
-- I think the biggest issues for claude code users will be the features not supported
-  above. Maybe some features like auto mode and memory should be able to be
-enabled behind env vars? What is the best UX here?
-- Similar to above, is providing UX most similar to default opencode the way to
-  go? Or maybe we should make it more similar to the claude code they're coming
-  from?
+
+- Can we call this "claude code" instead of "claude agent"? It's not allowed per the anthropic docs, but everyone else does it.
+- Can we reuse cc credentials for usage endpoints? Also not allowed but everyone else does it.
+- I think the biggest issues for claude code users will be the features not supported above. Maybe some features like auto mode and memory should be able to be enabled behind env vars? What is the best UX here?
+- Similar to above, is providing UX most similar to default opencode the way to go? Or maybe we should make it more similar to the claude code they're coming from?
 - The CC dependency is big (our second biggest) and will need to be downloaded for CI, yikes
-- There are some reports online that claude -p and claude sdk users get less usage out
-  of their claude subs than normal claude code. This is not documented or verified.
+- There are some reports online that claude -p and claude sdk users get less usage out of their claude subs than normal claude code. This is not documented or verified.
 - Do we need to discuss anything here with anthropic or any kind of approval?

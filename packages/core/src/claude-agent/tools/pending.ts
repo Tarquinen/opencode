@@ -9,7 +9,7 @@ interface Call {
 }
 
 export interface Interface {
-  readonly expect: (id: string, name: string) => Call
+  readonly expect: (id: string, name: string) => void
   readonly before: (id: string, name: string) => void
   readonly call: (name: string) => Promise<CallToolResult>
   readonly resolve: (id: string, result: ToolResult.Result) => void

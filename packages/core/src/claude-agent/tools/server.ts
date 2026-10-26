@@ -26,6 +26,7 @@ export async function make(
   server.setRequestHandler("tools/list", async () => ({ tools: definitions }))
   server.setRequestHandler("tools/call", async (request) => {
     const name = ToolNames.PREFIX + request.params.name
+    // Throws for a tool we did not offer
     ToolNames.original(name, tools)
     return pending.call(name)
   })

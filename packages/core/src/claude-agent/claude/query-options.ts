@@ -7,7 +7,7 @@ import type { PendingTools } from "../tools/pending.js"
 import { ToolServer } from "../tools/server.js"
 import type { ClaudeIO } from "./io.js"
 
-// Claude Code features that duplicate opencode's. opencode's version wins (README.md, "Claude Code features turned off").
+// Claude Code features that duplicate opencode's. opencode's version wins (specs/v2/claude-agent-provider.md, "Turned Off").
 const ISOLATION_ENV = {
   CLAUDE_CODE_DISABLE_CLAUDE_MDS: "1",
   CLAUDE_CODE_DISABLE_AUTO_MEMORY: "1",

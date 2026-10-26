@@ -77,7 +77,7 @@ const connectionStatus = Effect.gen(function* () {
   return integration?.connections[0]?.status
 })
 
-// Bounded by elapsed time rather than attempts, so a slow child process start on a busy machine still fits.
+// Bounded by elapsed time rather than attempts, so a busy machine still fits.
 function eventually<A, R>(
   effect: Effect.Effect<A, never, R>,
   predicate: (value: A) => boolean,
