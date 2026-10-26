@@ -132,7 +132,6 @@ Users can configure the `claude-agent` provider and its models in opencode confi
 ## Testing
 
 - Tests run a fake `claude` program that replays recorded real sessions. The SDK itself is not mocked, so tests exercise the real SDK.
-- Thinking text is never saved in recordings.
 
 ## Limitations
 
