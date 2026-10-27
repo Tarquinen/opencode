@@ -4,7 +4,7 @@
 
 The Claude Agent provider lets people use Claude models in opencode with their own Claude Code login. opencode runs the user's installed `claude` program through Anthropic's Claude Agent SDK.
 
-The idea is that all of opencode UX stays the same, and claude code becomes just another provider. We do not try to inherit settings a user migrating from claude code may have set because we want to allow them to experience default opencode UX, and we do our best to make the transition smooth.
+The idea is that all of opencode UX stays the same, and claude code becomes another provider. We do not try to inherit settings a claude code user may have set because we want to allow them to experience default opencode UX, and we do our best to make the transition smooth.
 
 ## Name and Login
 
@@ -16,14 +16,13 @@ The provider is called "Claude Agent", with the ID `claude-agent`. The SDK's [br
 
 - opencode runs the user's own `claude`, found on `PATH` or set with `OPENCODE_CLAUDE_PATH`. It only uses the public SDK. It never sits between Claude Code and Anthropic or changes Claude Code's requests.
 - opencode never reads Claude Code's saved login. Users sign in with `claude` in their terminal. `/connect` only records that they chose this login method.
-- Any login works: a subscription, an API key or a cloud account.
+- Any existing login works: a subscription, an API key or a cloud account.
 
 ## What Claude Sees
 
 ### System Prompt
 
 - Chats use Claude Code's own system prompt, plus a short note saying it is running in opencode.
-- Why: sending opencode's build prompt instead failed with `400 Third-party apps now draw from your extra usage, not your plan limits.` Adding all of opencode's extra system text on top of Claude Code's prompt failed the same way. OpenChamber and T3 Code also keep Claude Code's prompt.
 
 ### Instructions
 
