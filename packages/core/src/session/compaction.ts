@@ -23,7 +23,6 @@ import { Agent } from "../agent.js"
 import { Bus } from "../bus.js"
 import { Database } from "../database/database.js"
 import { llmClient } from "../effect/app-node-platform.js"
-import { Instructions } from "../instructions/index.js"
 import { Model } from "../model.js"
 import { State } from "../state.js"
 import { Token } from "../util/token.js"
@@ -380,7 +379,7 @@ export const layer = Layer.effect(
         firstID: context.messages[0]?.id,
         keepID: anchor.id,
         model: context.model.ref,
-        initial: Instructions.join(context.initial),
+        initial: context.initial,
         tailLimit: tailLimit(settings.keep, model.cap),
         failures,
         usage,
@@ -950,7 +949,7 @@ export const node = makeLocationNode({
  * conversation: a compaction or revert since replaced its start, or the model or instructions changed.
  */
 const heldIndex = (held: Precomputed, context: SessionContext.Loaded) => {
-  if (held.firstID !== context.messages[0]?.id || held.initial !== Instructions.join(context.initial)) return -1
+  if (held.firstID !== context.messages[0]?.id || held.initial !== context.initial) return -1
   if (held.model.providerID !== context.model.ref.providerID || held.model.id !== context.model.ref.id) return -1
   if (held.model.variant !== context.model.ref.variant) return -1
   return context.messages.findIndex((message) => message.id === held.keepID)

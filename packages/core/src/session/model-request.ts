@@ -27,7 +27,6 @@ import { Cause, Context, Effect, Layer, Result, Stream } from "effect"
 import { HttpClientRequest, HttpClientResponse } from "effect/http"
 import { makeLocationNode } from "@opencode/util/effect/app-node"
 import { App } from "../app.js"
-import { Instructions } from "../instructions/index.js"
 import { Permission } from "../permission.js"
 import { PluginHooks } from "../plugin/hooks.js"
 import { QuestionTool } from "../tool/plugin/question.js"
@@ -101,20 +100,20 @@ export const baseTranscript = (input: {
   readonly agent: Agent.Info
   readonly model: SessionRunnerModel.Resolved
   readonly tools: Tool.Snapshot
-  readonly initial: ReadonlyArray<Instructions.Rendered>
+  readonly initial: string
   readonly messages: ReadonlyArray<SessionMessage.Info>
 }) => {
   const providerMetadataKey = input.model.model.route.providerMetadataKey ?? input.model.model.provider
   return {
     providerMetadataKey,
     system: [
-      SystemPart.make(
-        input.agent.system
-          ? input.agent.system
-          : SessionSystemPrompt.make(input.tools.definitions.map((tool) => tool.name)),
-      ),
-      { ...SystemPart.make(Instructions.join(input.initial)), metadata: { instructions: input.initial } },
-    ].filter((part) => part.text.length > 0),
+      input.agent.system
+        ? input.agent.system
+        : SessionSystemPrompt.make(input.tools.definitions.map((tool) => tool.name)),
+      input.initial,
+    ]
+      .filter((part) => part.length > 0)
+      .map(SystemPart.make),
     messages: toLLMMessages(input.messages, input.model.ref, providerMetadataKey),
   }
 }
