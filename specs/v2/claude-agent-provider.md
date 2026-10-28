@@ -35,6 +35,7 @@ The provider is called "Claude Agent", with the ID `claude-agent`. The SDK's [br
 - When Claude calls a tool, the plugin holds the call. opencode runs it like any other model's tool call, including permission prompts, then sends the result back to Claude.
 - Why: the history looks the same whichever model wrote it, so switching between Claude and other models works. There is also only one permission system.
 - If opencode's tools cannot be given to Claude, the request fails. It never falls back to Claude Code's tools.
+- If Claude calls a tool that was not offered, such as `glob` without the `mcp__opencode__` prefix, Claude Code answers with its own `No such tool available` error and Claude carries on. The plugin ignores the call, so it never reaches opencode and does not end the step.
 - When the list of tools changes, the Claude process restarts, because the SDK cannot swap tools while running.
 - Claude Code's plan mode is not used. opencode's Plan agent works as it does for other models, through its permissions and reminder messages.
 
@@ -145,6 +146,7 @@ opencode features that do not work, or work differently, with Claude Agent model
 - Chats follow Claude Code's base prompt, not opencode's built-in agent prompts. Custom agent prompts still apply.
 - Temperature, top-p, top-k, penalties, seed and stop sequences are not supported.
 - Base URLs and headers come only from config. Plugins cannot change them per request (for now), and the `http.request` and `http.response` hooks never run, because Claude Code makes the API calls.
+- Calls to tools that were not offered are not shown or saved in opencode (see [Tools](#tools)). When such a call is the only one in a response, that response's tokens are not counted in cost.
 
 ## Claude Code Features Not Supported
 
