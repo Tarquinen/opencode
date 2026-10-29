@@ -155,7 +155,7 @@ Claude Code features that opencode has no version of.
 - Claude plan usage: `/usage`, the options shown at a limit, auto-continue when a limit resets, and buying extra usage. opencode's `/usage` shows OpenCode Console usage instead.
 - Cloud features: cloud sessions and `/teleport`, scheduled tasks and `/autofix-pr`.
 - Agent teams and messaging between sessions.
-- `/loop` and `/goal`.
+- `/loop`.
 - Auto mode, where a classifier approves permissions, and ultracode.
 - Auto memory and away summaries aka recaps (see [Turned Off](#turned-off)).
 - Computer use, sandboxed Bash and notebook editing.
