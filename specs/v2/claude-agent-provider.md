@@ -27,6 +27,7 @@ The provider is called "Claude Agent", with the ID `claude-agent`. The SDK's [br
 ### Instructions
 
 - On top of Claude Code's prompt, we add the selected agent's prompt as its role, and opencode's instructions: AGENTS.md files, skills, MCP instructions, project references and so on.
+- opencode keys each instruction source. We pass every source except opencode's date and environment, because Claude Code writes its own.
 
 ### Tools
 

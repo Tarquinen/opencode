@@ -418,15 +418,29 @@ describe("ClaudeAgentPlugin session hooks", () => {
     }),
   )
 
-  it.live("passes opencode's instructions to Claude without opencode's own prompt", () =>
+  it.live("passes opencode's instructions to Claude, except the date and environment Claude Code writes itself", () =>
     Effect.gen(function* () {
       yield* addPlugin(FakeIO.make({ claude: FakeClaude.make([]) }))
       yield* addAgents
       const hooks = yield* PluginHooks.Service
       const event = hookEvent((yield* newSession).id)
-      event.system = [SystemPart.make("OPENCODE-PROMPT"), SystemPart.make("INSTRUCTIONS")]
+      event.system = [
+        SystemPart.make("OPENCODE-PROMPT"),
+        {
+          ...SystemPart.make("JOINED-INSTRUCTIONS"),
+          metadata: {
+            instructions: [
+              { key: "core/skill-guidance", text: "SKILLS" },
+              { key: "core/date", text: "DATE" },
+              { key: "core/environment", text: "ENVIRONMENT" },
+              { key: "api/deploy-target", text: "ENTRY" },
+            ],
+          },
+        },
+        SystemPart.make("PLUGIN-PART"),
+      ]
       const context = yield* hooks.trigger("session", "context", event)
-      expect(context.options[ClaudeSystemPrompt.INSTRUCTIONS_OPTION]).toBe("INSTRUCTIONS")
+      expect(context.options[ClaudeSystemPrompt.INSTRUCTIONS_OPTION]).toBe("SKILLS\n\nENTRY\n\nPLUGIN-PART")
     }),
   )
 
