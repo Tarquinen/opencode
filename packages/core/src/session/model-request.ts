@@ -113,7 +113,10 @@ export const baseTranscript = (input: {
           ? input.agent.system
           : SessionSystemPrompt.make(input.tools.definitions.map((tool) => tool.name)),
       ),
-      { ...SystemPart.make(Instructions.join(input.initial)), metadata: { instructions: input.initial } },
+      {
+        ...SystemPart.make(Instructions.join(input.initial)),
+        metadata: { experimental: { instructions: input.initial } },
+      },
     ].filter((part) => part.text.length > 0),
     messages: toLLMMessages(input.messages, input.model.ref, providerMetadataKey),
   }

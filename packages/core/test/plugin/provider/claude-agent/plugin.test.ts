@@ -429,12 +429,14 @@ describe("ClaudeAgentPlugin session hooks", () => {
         {
           ...SystemPart.make("JOINED-INSTRUCTIONS"),
           metadata: {
-            instructions: [
-              { key: "core/skill-guidance", text: "SKILLS" },
-              { key: "core/date", text: "DATE" },
-              { key: "core/environment", text: "ENVIRONMENT" },
-              { key: "api/deploy-target", text: "ENTRY" },
-            ],
+            experimental: {
+              instructions: [
+                { key: "core/skill-guidance", text: "SKILLS" },
+                { key: "core/date", text: "DATE" },
+                { key: "core/environment", text: "ENVIRONMENT" },
+                { key: "api/deploy-target", text: "ENTRY" },
+              ],
+            },
           },
         },
         SystemPart.make("PLUGIN-PART"),

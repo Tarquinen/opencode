@@ -9,7 +9,9 @@ import { ClaudeProvider } from "./provider.js"
 const KINDS = ["context", "generate", "compaction"] as const
 
 const InstructionsMetadata = Schema.Struct({
-  instructions: Schema.Array(Schema.Struct({ key: Schema.String, text: Schema.String })),
+  experimental: Schema.Struct({
+    instructions: Schema.Array(Schema.Struct({ key: Schema.String, text: Schema.String })),
+  }),
 })
 
 // Claude Code writes its own date and environment, so OpenCode's would repeat them.
@@ -43,7 +45,7 @@ function instructions(system: ReadonlyArray<SystemPart>) {
       texts.push(part.text)
       continue
     }
-    for (const source of metadata.value.instructions) {
+    for (const source of metadata.value.experimental.instructions) {
       if (SUPPLIED_BY_CLAUDE.has(source.key)) continue
       texts.push(source.text)
     }
