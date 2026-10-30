@@ -119,6 +119,42 @@ describe("Claude tool steps", () => {
     }),
   )
 
+  it.effect("a turn waiting for tool results outlives the idle timeout", () =>
+    Effect.gen(function* () {
+      const claude = FakeClaude.make(FakeClaude.replay("tools"))
+      const test = yield* TestSessions.start(claude)
+      const prompt = TestTools.prompt()
+      TestTools.append(prompt, yield* TestTools.step(test.model, prompt), TestTools.output)
+      // A subagent or an unanswered permission prompt can keep OpenCode's tools running this long.
+      yield* TestClock.adjust(ClaudeSessions.IDLE_MS * 2)
+      TestTools.append(prompt, yield* TestTools.step(test.model, prompt), TestTools.output)
+      expect(TestSessions.text(yield* TestTools.step(test.model, prompt))).toBe("COPPER-OTTER")
+      expect(claude.runs).toHaveLength(1)
+      expect(claude.runs[0]!.received.some((message) => message.request?.subtype === "interrupt")).toBe(false)
+      yield* test.registry.close()
+      claude.check()
+    }),
+  )
+
+  it.effect("a turn left waiting for tool results stops IDLE_MS after OpenCode stops running the session", () =>
+    Effect.gen(function* () {
+      const cancel = FakeClaude.replay("tools-waiting-cancel")
+      const nextUser = cancel.findIndex(
+        (step, index) => index > 1 && step.type === "exchange" && step.input.type === "user",
+      )
+      const claude = FakeClaude.make(cancel.slice(0, nextUser))
+      const test = yield* TestSessions.start(claude)
+      yield* TestTools.step(test.model, TestTools.prompt())
+      yield* test.sessions.idle("session-a")
+      yield* TestClock.adjust(ClaudeSessions.IDLE_MS - 1)
+      expect(claude.runs[0]!.received.some((message) => message.request?.subtype === "interrupt")).toBe(false)
+      yield* TestClock.adjust(1)
+      yield* Effect.promise(() => claude.runs[0]!.closed)
+      expect(claude.runs[0]!.received.filter((message) => message.request?.subtype === "interrupt")).toHaveLength(1)
+      claude.check()
+    }),
+  )
+
   it.effect("a process exit while OpenCode runs tools resumes with their saved results", () =>
     Effect.gen(function* () {
       const steps = FakeClaude.replay("tools-cancel")

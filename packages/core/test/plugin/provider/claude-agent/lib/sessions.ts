@@ -56,7 +56,7 @@ export const start = Effect.fn(function* (claude: FakeClaude.Fake, saved = stora
     directory: "/tmp/opencode",
   }
   const sessions = yield* registry.attach(input)
-  return { registry, input, model: yield* model(sessions), storage: saved }
+  return { registry, input, sessions, model: yield* model(sessions), storage: saved }
 })
 
 export function stream(
