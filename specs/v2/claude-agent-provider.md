@@ -96,6 +96,7 @@ Users can configure the `claude-agent` provider and its models in opencode confi
 - Claude cannot load history it did not write. When a user switches to Claude, everything Claude has not seen is sent as one user message, wrapped in `<conversation-checkpoint>`, without thinking text.
 - When a user switches back to Claude later, only the part it missed is sent.
 - After an edit or undo, the plugin copies Claude's session up to the last point where both histories match and continues from there. If nothing matches, Claude starts fresh with the whole history.
+- After an interrupted reply, Claude keeps the partial reply it already wrote. The next message continues the same Claude session, even when opencode saved a different partial reply or none at all.
 - Plugins that change the message history through the `context` hook work too. Claude gets the changed history the same way as after an edit or undo.
 
 ## Running Claude

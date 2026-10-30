@@ -13,6 +13,24 @@ const past = [user("First marker"), assistant("COPPER-OTTER")]
 const record = { claudeSessionID: "claude-a", history: Fingerprint.groups(past) }
 
 describe("history reconciliation", () => {
+  test("an interrupted reply continues after the submitted input without hiding earlier edits or missed turns", () => {
+    const input = [...past, user("List animals")]
+    const saved = { claudeSessionID: "claude-a", history: Fingerprint.groups(input), interrupted: true }
+    expect(SyncDecision.decide([...input, assistant("1. Ot"), user("Stop")], saved)).toEqual({
+      kind: "continue",
+      start: 4,
+    })
+    // With no saved partial reply, the next user message must not merge into the submitted input.
+    expect(SyncDecision.decide([...input, user("Stop")], saved)).toEqual({ kind: "continue", start: 3 })
+    expect(
+      SyncDecision.decide(
+        [...input, assistant("1. Ot"), user("Other model"), assistant("New answer"), user("Back")],
+        saved,
+      ),
+    ).toEqual({ kind: "catch-up", start: 4 })
+    expect(SyncDecision.decide([past[0]!, assistant("Edited"), input[2]!, user("Stop")], saved).kind).toBe("changed")
+  })
+
   test("branches only at a matching checkpoint, never midway through a group of tool calls", () => {
     const history: LanguageModelV3Prompt = [
       ...past,
