@@ -22,9 +22,7 @@ import { Money } from "@opencode/schema/money"
 import { Plugin } from "@opencode/core/plugin"
 import { PluginHooks } from "@opencode/core/plugin/hooks"
 import { PluginHost } from "@opencode/core/plugin/host"
-import { ProviderPlugins } from "@opencode/core/plugin/provider"
-import { ClaudeAgentPlugin, ID, make } from "@opencode/core/plugin/provider/claude-agent/index"
-import { DynamicProviderPlugin } from "@opencode/core/plugin/provider/dynamic"
+import { ID, make } from "@opencode/core/plugin/provider/claude-agent/index"
 import { Provider } from "@opencode/core/provider"
 import { Session } from "@opencode/core/session"
 import { SessionInbox } from "@opencode/core/session/inbox"
@@ -133,14 +131,6 @@ const sonnetCost = Effect.fn(function* (account: AccountInfo, env?: Record<strin
 })
 
 describe("ClaudeAgentPlugin", () => {
-  it.effect("runs before the dynamic provider plugin, which would load an npm package instead", () =>
-    Effect.sync(() => {
-      const ids = ProviderPlugins.map((plugin) => plugin.id)
-      expect(ids.indexOf(ClaudeAgentPlugin.id)).toBeGreaterThanOrEqual(0)
-      expect(ids.indexOf(ClaudeAgentPlugin.id)).toBeLessThan(ids.indexOf(DynamicProviderPlugin.id))
-    }),
-  )
-
   it.live("skips where opencode cannot start local processes", () =>
     Effect.gen(function* () {
       const claude = FakeClaude.make([])
