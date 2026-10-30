@@ -21,6 +21,8 @@ const ISOLATION_ENV = {
   CLAUDE_CODE_SIMPLE: undefined,
   // A shell-level effort override would take precedence over OpenCode's live effort settings.
   CLAUDE_CODE_EFFORT_LEVEL: undefined,
+  // Caps every OpenCode tool call, which would fail subagents and permission prompts that run longer
+  MCP_TOOL_TIMEOUT: undefined,
 }
 
 export function connectionEnv(connection: {

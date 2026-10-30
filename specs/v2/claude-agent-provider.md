@@ -53,7 +53,7 @@ Claude Code reads none of the user's Claude settings. The plugin passes every se
 - Tool search. Claude Code hides MCP tools until Claude searches for them. All of opencode's tools reach Claude as MCP tools, so this would hide every one of them. Opencode also has native tool deferral through codemode for normal MCPs.
 - The advisor tool. Claude can ask a stronger model for advice in the middle of a task, using the user's plan. opencode could not show or control these calls.
 
-We also clear two variables a user might have set in their shell. `CLAUDE_CODE_SIMPLE` would skip the subscription login. `CLAUDE_CODE_EFFORT_LEVEL` would override the effort chosen in opencode.
+We also clear three variables a user might have set in their shell. `CLAUDE_CODE_SIMPLE` would skip the subscription login. `CLAUDE_CODE_EFFORT_LEVEL` would override the effort chosen in opencode. `MCP_TOOL_TIMEOUT` would cap every opencode tool call, failing subagents and permission prompts that run longer.
 
 ### Set by opencode
 
