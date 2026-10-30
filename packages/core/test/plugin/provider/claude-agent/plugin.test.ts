@@ -305,6 +305,19 @@ describe("ClaudeAgentPlugin connection", () => {
       claude.check()
     }),
   )
+
+  it.live("connecting with an old claude still lists its models", () =>
+    Effect.gen(function* () {
+      const onConnect = FakeClaude.expectStartup()
+      onConnect.reply.claude_code_version = "2.1.247"
+      const claude = FakeClaude.make([onConnect])
+      yield* addPlugin(FakeIO.make({ claude }))
+      yield* connect
+      yield* eventually(claudeModels, (models) => models.length > 0)
+      expect(yield* connectionStatus).toBeUndefined()
+      claude.check()
+    }),
+  )
 })
 
 describe("ClaudeAgentPlugin session hooks", () => {
